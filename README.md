@@ -1,60 +1,46 @@
-# 00631L Quant V16 Unified Final
+# 00631L＋00981A 短線雙標的 V17 Final
 
-這是將 V11～V16 合併後的統一版本，不再拆成多個小版本。
+本版只服務短線操作，正式標的為：
 
-## 已整合
+- 00631L：台灣50正2短線反彈／落底交易
+- 00981A：主動式ETF短線轉強／回檔交易
 
-- GitHub Actions 全自動更新
-- LINE 推播
-- 決策歷史
-- 部位狀態與手動交易紀錄
-- 多商品掃描與排名
-- 策略研究歷史
-- 多模型決策
-- Walk-forward 驗證
-- Colab 備援
+不加入009816與2330，也不做長線資產配置。
 
-## 每天使用
+## 每日自動流程
 
-完成 GitHub Actions 與 LINE Secrets 設定後，不需要開桌機。
+台灣時間週一至週五14:35，GitHub Actions會：
 
-系統會在台灣時間週一至週五 14:35 自動執行。
+1. 更新00631L與00981A行情。
+2. 分別建立技術指標。
+3. 分別執行回測與模型。
+4. 產生兩份獨立決策卡。
+5. LINE一次推送兩則訊息。
+6. 更新兩檔歷史紀錄。
 
-## 交易狀態
+## 報告位置
 
-在 `data/manual/trades.csv` 填入真實成交：
+### 00631L
 
-```csv
-trade_id,date,side,shares,price,note
-1,2026-07-30,BUY,1000,28.00,第一筆
-```
+- `reports/daily_decision.json`
+- `reports/dashboard.html`
+- `reports/strategy_leaderboard.csv`
+- `reports/wave_tracking.csv`
+- `reports/decision_history.csv`
 
-系統會更新：
+### 00981A
 
-- `reports/position_state.json`
-- 未實現損益
-- 已實現損益
-- 平均成本
-- 目前股數
+- `reports/00981A/daily_decision.json`
+- `reports/00981A/dashboard.html`
+- `reports/00981A/strategy_leaderboard.csv`
+- `reports/00981A/wave_tracking.csv`
+- `reports/00981A/decision_history.csv`
 
-## 多商品排名
+## 00981A風險處理
 
-自動輸出：
+00981A上市歷史較短，因此：
 
-`reports/universe_ranking.csv`
-
-目前包含：
-
-- 00631L
-- 00675L
-- 0050
-- 2330
-- 00673R
-- 00981A
-- 00982A
-
-## 策略研究
-
-每日保留前 20 名策略至：
-
-`reports/strategy_research_log.csv`
+- 模型資料不足時不硬給預測。
+- 回測策略不足時自動切換短線技術備援。
+- 歷史少於500筆時，信心最高只到C級。
+- 正式進場必須同時考慮大盤環境、MA20、MACD與量價。

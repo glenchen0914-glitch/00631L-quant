@@ -40,4 +40,16 @@ def update_performance(
     print(f"✅ 決策歷史已更新：{hpath}")
 
 if __name__ == "__main__":
-    update_performance()
+    update_dual_performance()
+
+
+def update_dual_performance() -> None:
+    update_performance(
+        "reports/daily_decision.json",
+        "reports/decision_history.csv",
+    )
+    update_performance(
+        "reports/00981A/daily_decision.json",
+        "reports/00981A/decision_history.csv",
+    )
+

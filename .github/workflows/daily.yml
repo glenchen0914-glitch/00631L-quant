@@ -1,4 +1,4 @@
-name: 00631L Unified Final
+name: 00631L + 00981A Short-Term
 
 on:
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Syntax check
-        run: python -m compileall -q src tests run_pipeline.py run_auto.py
+        run: python -m compileall -q src tests run_pipeline.py run_auto.py run_dual.py
 
       - name: Offline smoke test
         run: python tests/test_smoke.py
@@ -48,7 +48,7 @@ jobs:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
           LINE_PUSH_REQUIRED: 'false'
-        run: python run_unified.py
+        run: python run_dual.py
 
       - name: Validate outputs
         run: |
@@ -57,8 +57,12 @@ jobs:
           test -s reports/strategy_leaderboard.csv
           test -s reports/wave_tracking.csv
           test -s reports/decision_history.csv
-          test -s reports/position_state.json
-          test -s reports/strategy_research_log.csv
+          test -s reports/00981A/daily_decision.json
+          test -s reports/00981A/dashboard.html
+          test -s reports/00981A/strategy_leaderboard.csv
+          test -s reports/00981A/wave_tracking.csv
+          test -s reports/00981A/decision_history.csv
+          test -s reports/dual_summary.json
           python - <<'PY'
           import json
           from pathlib import Path
@@ -83,8 +87,11 @@ jobs:
           git add -f reports/wave_tracking.csv
           git add -f reports/decision_history.csv
           git add -f reports/README.md
-          git add -f reports/position_state.json
-          git add -f reports/strategy_research_log.csv
-          git add -f reports/universe_ranking.csv || true
+          git add -f reports/00981A/daily_decision.json
+          git add -f reports/00981A/dashboard.html
+          git add -f reports/00981A/strategy_leaderboard.csv
+          git add -f reports/00981A/wave_tracking.csv
+          git add -f reports/00981A/decision_history.csv
+          git add -f reports/dual_summary.json
           git commit -m "Daily 00631L auto report" || exit 0
           git push

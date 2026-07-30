@@ -23,13 +23,13 @@ def build_line_message(decision: dict) -> str:
     missing = reasons.get("missing", [])
 
     lines = [
-        "00631L 每日決策",
+        f"{decision.get('asset_code', '00631L')} 每日決策",
         f"資料日期：{decision.get('data_date', '-')}",
         "",
         f"結論：{decision.get('action', '-')}",
         f"建議持股：{decision.get('suggested_position_pct', 0)}%",
         f"信心：{grade.get('grade', '-')}級 {grade.get('score', 0)}/100",
-        f"落底進度：{decision.get('bottom_progress_pct', 0)}%",
+        f"{decision.get('progress_label', '落底進度')}：{decision.get('bottom_progress_pct', 0)}%",
         f"市場環境：{regime.get('label', '-')} {regime.get('score', 0)}/100",
         f"參考收盤：{decision.get('reference_close', 0):.2f}",
         "",
@@ -50,11 +50,10 @@ def build_line_message(decision: dict) -> str:
     lines += ["", "完整儀表板請查看 GitHub Actions 執行產物或 Repository reports/dashboard.html"]
     return "\n".join(lines)
 
-def push_line(text: str, token: str, user_id: str) -> None:
-    body = json.dumps({
-        "to": user_id,
-        "messages": [{"type": "text", "text": text[:5000]}]
-    }).encode("utf-8")
+
+def push_line_messages(texts: list[str], token: str, user_id: str) -> None:
+    messages = [{"type": "text", "text": text[:5000]} for text in texts[:5]]
+    body = json.dumps({"to": user_id, "messages": messages}).encode("utf-8")
     req = urllib.request.Request(
         LINE_API,
         data=body,
@@ -84,10 +83,19 @@ def main() -> None:
         print("⚠️", msg)
         return
 
-    decision = _load_decision()
-    text = build_line_message(decision)
-    push_line(text, token, user_id)
-    print("✅ LINE 推播完成")
+    paths = [
+        Path("reports/daily_decision.json"),
+        Path("reports/00981A/daily_decision.json"),
+    ]
+    decisions = []
+    for path in paths:
+        if not path.exists():
+            raise FileNotFoundError(f"找不到決策檔：{path}")
+        decisions.append(json.loads(path.read_text(encoding="utf-8")))
+
+    texts = [build_line_message(d) for d in decisions]
+    push_line_messages(texts, token, user_id)
+    print(f"✅ LINE 雙標的推播完成，共 {len(texts)} 則")
 
 if __name__ == "__main__":
     main()
