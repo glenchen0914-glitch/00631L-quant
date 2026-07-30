@@ -1,6 +1,6 @@
-# 00631L Quant V4.5
+# 00631L Quant V4.5.1
 
-手機版＋GitHub Actions 自動版。
+手機版＋GitHub Actions 自動版（首次執行修正版）。
 
 ## 功能
 
@@ -22,7 +22,7 @@
 
 再按 `Open in Colab`。
 
-第一次使用 Colab，要把第一格的 `GITHUB_USER` 改成你的 GitHub 帳號。
+Notebook 已預設 GitHub 帳號 `glenchen0914-glitch`，通常不需要再修改。
 
 ## 自動排程
 
@@ -30,7 +30,7 @@
 
 GitHub Actions 使用 UTC，因此 cron 為：
 
-`30 23 * * 1-5`
+`30 23 * * 0-4`
 
 ## 手動資料
 
@@ -48,3 +48,11 @@ GitHub Actions 使用 UTC，因此 cron 為：
 - 重大事件備註
 
 沒有可靠資料時可留空，系統不會假裝已取得。
+
+## V4.5.1 修正
+
+- 修正 Open in Colab 連結中的 `USERNAME`。
+- 預設填入 GitHub 帳號。
+- 修正台灣時區的 GitHub Actions 星期設定。
+- 避免把 SQLite、Parquet 與 Python 快取提交到 GitHub。
+- 只提交每日報告與追蹤結果。

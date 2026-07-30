@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+data/market.db
+data/features.parquet
+reports/trades_*.csv
