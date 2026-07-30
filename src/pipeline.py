@@ -7,6 +7,9 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import roc_auc_score
 from sklearn.model_selection import TimeSeriesSplit
 from .config import Config
@@ -191,33 +194,37 @@ def train_ml_model(df: pd.DataFrame) -> dict:
 def market_regime_score(df: pd.DataFrame) -> dict:
     last = df.iloc[-1]
     parts = {}
-    parts["台股趨勢"] = 20 if bool(last.get("twii_above_ma20", False)) else 0
-    parts["NASDAQ"] = 15 if bool(last.get("nasdaq_above_ma20", False)) else 0
-    parts["SOX"] = 20 if bool(last.get("sox_above_ma20", False)) else 0
-    parts["S&P500"] = 10 if bool(last.get("sp500_above_ma20", False)) else 0
-    parts["台積電ADR"] = 15 if bool(last.get("tsm_adr_above_ma20", False)) else 0
+    weights = {"台股趨勢":20,"NASDAQ":15,"SOX":20,"S&P500":10,"台積電ADR":15,"VIX":10,"美元":5,"美債殖利率":5}
 
-    vix_ret = float(last.get("vix_ret1", 0) or 0)
-    parts["VIX"] = 10 if vix_ret <= 0 else (5 if vix_ret < 0.03 else 0)
+    def trend_points(name, weight):
+        above = last.get(f"{name}_above_ma20", np.nan)
+        ret = last.get(f"{name}_ret1", np.nan)
+        if pd.isna(above):
+            return None
+        base = weight * (0.75 if bool(above) else 0.25)
+        if pd.notna(ret):
+            base += weight * (0.15 if float(ret) > 0 else -0.15)
+        return int(round(max(0, min(weight, base))))
 
-    dxy_ret = float(last.get("dxy_ret1", 0) or 0)
-    parts["美元"] = 5 if dxy_ret <= 0 else 0
+    parts["台股趨勢"] = trend_points("twii",20)
+    parts["NASDAQ"] = trend_points("nasdaq",15)
+    parts["SOX"] = trend_points("sox",20)
+    parts["S&P500"] = trend_points("sp500",10)
+    parts["台積電ADR"] = trend_points("tsm_adr",15)
 
-    us10y_ret = float(last.get("us10y_ret1", 0) or 0)
-    parts["美債殖利率"] = 5 if us10y_ret <= 0 else 0
+    vix_ret = last.get("vix_ret1", np.nan)
+    parts["VIX"] = None if pd.isna(vix_ret) else (10 if float(vix_ret) <= -0.02 else 7 if float(vix_ret) <= 0 else 4 if float(vix_ret) < 0.03 else 0)
+    dxy_ret = last.get("dxy_ret1", np.nan)
+    parts["美元"] = None if pd.isna(dxy_ret) else (5 if float(dxy_ret) <= 0 else 2)
+    us10y_ret = last.get("us10y_ret1", np.nan)
+    parts["美債殖利率"] = None if pd.isna(us10y_ret) else (5 if float(us10y_ret) <= 0 else 2)
 
-    score = int(sum(parts.values()))
-    if score >= 75:
-        label = "偏多"
-    elif score >= 55:
-        label = "中性偏多"
-    elif score >= 40:
-        label = "中性"
-    elif score >= 25:
-        label = "中性偏空"
-    else:
-        label = "偏空"
-    return {"score": score, "label": label, "parts": parts}
+    available = {k:v for k,v in parts.items() if v is not None}
+    max_score = sum(weights[k] for k in available)
+    raw = sum(available.values())
+    score = int(round(100 * raw / max_score)) if max_score else 0
+    label = "偏多" if score >= 75 else "中性偏多" if score >= 60 else "中性" if score >= 45 else "中性偏空" if score >= 30 else "偏空"
+    return {"score": score, "label": label, "parts": parts, "max_score": max_score}
 
 def bottom_progress_breakdown(df: pd.DataFrame, manual: dict) -> dict:
     last = df.iloc[-1]
@@ -304,6 +311,176 @@ def tiered_entry_plan(df: pd.DataFrame, levels: dict, stage: str) -> dict:
     }
 
 
+
+def data_quality_report(data: dict[str, pd.DataFrame], symbols: dict[str, str]) -> dict:
+    today = pd.Timestamp.utcnow().tz_localize(None).normalize()
+    rows = []
+    required = ["etf","twii","nasdaq","sox","sp500","vix","dxy","us10y","tsm_adr"]
+    for name in required:
+        frame = data.get(name)
+        if frame is None or frame.empty:
+            rows.append({
+                "name": name, "symbol": symbols.get(name), "status": "失敗",
+                "latest_date": None, "delay_days": None, "rows": 0,
+                "missing_close": None
+            })
+            continue
+        latest = pd.to_datetime(frame.index.max()).tz_localize(None)
+        delay = int((today - latest.normalize()).days)
+        missing_close = int(frame["Close"].isna().sum()) if "Close" in frame else None
+        status = "正常" if delay <= 4 else "延遲"
+        rows.append({
+            "name": name, "symbol": symbols.get(name), "status": status,
+            "latest_date": str(latest.date()), "delay_days": delay,
+            "rows": int(len(frame)), "missing_close": missing_close
+        })
+    complete = sum(r["status"] == "正常" for r in rows)
+    score = int(round(100 * complete / len(required)))
+    return {"score": score, "rows": rows}
+
+def walk_forward_strategy_metrics(df: pd.DataFrame, s: Strategy, cfg: Config, windows: int = 4) -> dict:
+    n = len(df)
+    if n < 400:
+        return {"windows": 0, "positive_windows": 0, "median_pf": None, "median_return": None}
+    fold = max(80, n // (windows + 2))
+    results = []
+    for i in range(windows):
+        start = max(0, n - (windows - i + 1) * fold)
+        end = min(n, start + 2 * fold)
+        seg = df.iloc[start:end]
+        if len(seg) < 80:
+            continue
+        metrics, _ = backtest(seg, s, cfg)
+        if metrics is not None:
+            results.append(metrics)
+    if not results:
+        return {"windows": 0, "positive_windows": 0, "median_pf": None, "median_return": None}
+    pfs = [r["profit_factor"] for r in results if np.isfinite(r["profit_factor"])]
+    rets = [r["total_return"] for r in results]
+    return {
+        "windows": len(results),
+        "positive_windows": int(sum(r > 0 for r in rets)),
+        "median_pf": float(np.median(pfs)) if pfs else None,
+        "median_return": float(np.median(rets)),
+    }
+
+def strategy_description(row: pd.Series) -> str:
+    parts = [f"周KD<{int(row['week_k_max'])}", f"RSI<{int(row['rsi_max'])}"]
+    if bool(row["require_k_cross"]): parts.append("日KD黃金交叉")
+    if bool(row["require_macd_improve"]): parts.append("MACD改善")
+    if bool(row["require_close_ma20"]): parts.append("站上MA20")
+    if bool(row["require_twii_ma20"]): parts.append("大盤站上MA20")
+    parts.append(f"停損{float(row['stop_loss']):.0%}")
+    parts.append(f"停利{float(row['take_profit']):.0%}")
+    parts.append(f"最長{int(row['max_hold'])}日")
+    return "｜".join(parts)
+
+def model_consensus(df: pd.DataFrame) -> dict:
+    x = add_ml_features(df).replace([np.inf,-np.inf], np.nan)
+    model_df = x.dropna(subset=ML_FEATURES + ["target_5d"]).copy()
+    if len(model_df) < 500:
+        return {"probability": None, "consensus": None, "models": [], "confidence": "不足", "note": "可用資料不足500筆"}
+
+    X = model_df[ML_FEATURES]
+    y = model_df["target_5d"].astype(int)
+    latest = x[ML_FEATURES].iloc[[-1]]
+    if latest.isna().any(axis=None):
+        return {"probability": None, "consensus": None, "models": [], "confidence": "不足", "note": "最新資料有缺值"}
+
+    tscv = TimeSeriesSplit(n_splits=5)
+    specs = [
+        ("Logistic", Pipeline([("scaler", StandardScaler()), ("model", LogisticRegression(max_iter=1500, class_weight="balanced"))])),
+        ("RandomForest", RandomForestClassifier(
+            n_estimators=300, max_depth=5, min_samples_leaf=12,
+            class_weight="balanced", random_state=42, n_jobs=-1
+        )),
+    ]
+    model_rows = []
+    for name, model in specs:
+        aucs = []
+        trained = False
+        for train_idx, test_idx in tscv.split(X):
+            X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+            y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+            if y_train.nunique() < 2 or y_test.nunique() < 2:
+                continue
+            model.fit(X_train, y_train)
+            pred = model.predict_proba(X_test)[:,1]
+            aucs.append(roc_auc_score(y_test, pred))
+            trained = True
+        if not trained:
+            continue
+        model.fit(X, y)
+        prob = float(model.predict_proba(latest)[:,1][0])
+        auc = float(np.mean(aucs)) if aucs else None
+        model_rows.append({"name": name, "probability": prob, "auc": auc})
+
+    if not model_rows:
+        return {"probability": None, "consensus": None, "models": [], "confidence": "不足", "note": "模型無法完成時間序列驗證"}
+
+    valid = [m for m in model_rows if m["auc"] is not None]
+    avg_prob = float(np.mean([m["probability"] for m in model_rows]))
+    avg_auc = float(np.mean([m["auc"] for m in valid])) if valid else None
+    consensus = float(np.mean([m["probability"] >= 0.55 for m in model_rows]))
+    if avg_auc is None:
+        confidence = "不足"
+    elif avg_auc >= 0.62:
+        confidence = "中"
+    elif avg_auc >= 0.56:
+        confidence = "偏低"
+    else:
+        confidence = "很低"
+    return {
+        "probability": avg_prob,
+        "consensus": consensus,
+        "models": model_rows,
+        "auc": avg_auc,
+        "confidence": confidence,
+        "note": "多模型只作為輔助，不單獨決定交易"
+    }
+
+def explain_decision(decision: dict) -> dict:
+    positives, negatives, missing = [], [], []
+    if decision["bottom_progress_pct"] >= 60:
+        positives.append("落底進度已接近布局門檻")
+    else:
+        negatives.append("落底進度仍不足")
+    regime = decision["market_regime"]
+    if regime["score"] >= 55:
+        positives.append("市場環境至少中性偏多")
+    else:
+        negatives.append(f"市場環境為{regime['label']}")
+    ensemble = decision["ensemble_signal"]["vote_ratio"]
+    if ensemble >= 0.6:
+        positives.append("Top 5策略多數支持")
+    else:
+        negatives.append("Top 5策略尚未形成多數")
+    model = decision["model_consensus"]
+    if model.get("probability") is not None:
+        if model["probability"] >= 0.55:
+            positives.append("模型共識略偏多")
+        else:
+            negatives.append("模型共識未達偏多門檻")
+    else:
+        missing.append("模型資料不足")
+    if decision["data_status"].get("融資") != "已提供":
+        missing.append("融資資料未提供")
+    return {"positive": positives, "negative": negatives, "missing": missing}
+
+def confidence_grade(decision: dict) -> dict:
+    score = 0
+    score += min(30, decision["bottom_progress_pct"] * 0.30)
+    score += min(20, decision["market_regime"]["score"] * 0.20)
+    score += 20 * decision["ensemble_signal"]["vote_ratio"]
+    model = decision["model_consensus"]
+    if model.get("probability") is not None:
+        score += 15 * max(0, min(1, (model["probability"] - 0.45) / 0.20))
+    score += 15 * (decision["data_quality"]["score"] / 100)
+    score = int(round(score))
+    grade = "A" if score >= 80 else "B" if score >= 65 else "C" if score >= 50 else "D"
+    return {"score": score, "grade": grade}
+
+
 @dataclass(frozen=True)
 class Strategy:
     name: str
@@ -386,6 +563,12 @@ def optimize(df: pd.DataFrame, cfg: Config):
                       +1.5*min(ms["profit_factor"],4)
                       +2*ms["cagr"]+2*ms["max_drawdown"]
                       +0.02*min(ms["trades"],30))
+        row["description"] = strategy_description(pd.Series(row))
+        wf = walk_forward_strategy_metrics(x, s, cfg)
+        row["wf_windows"] = wf["windows"]
+        row["wf_positive_windows"] = wf["positive_windows"]
+        row["wf_median_pf"] = wf["median_pf"]
+        row["wf_median_return"] = wf["median_return"]
         rows.append(row); trade_map[s.name]=tr
     board=pd.DataFrame(rows)
     if board.empty: raise RuntimeError("沒有策略通過最低樣本門檻")
@@ -534,7 +717,7 @@ def strategy_ensemble_signal(df: pd.DataFrame, board: pd.DataFrame, top_n: int =
     return {"vote_ratio": ratio, "members": names}
 
 
-def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
+def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict, data_quality: dict | None = None):
     best=board.iloc[0]
     s=Strategy(best["name"],int(best["week_k_max"]),int(best["rsi_max"]),
                bool(best["require_k_cross"]),bool(best["require_macd_improve"]),
@@ -546,6 +729,7 @@ def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
     regime=market_regime_score(df)
     breakdown=bottom_progress_breakdown(df,manual)
     ml=train_ml_model(df)
+    models=model_consensus(df)
     ensemble=strategy_ensemble_signal(df,board,top_n=5)
 
     last=df.iloc[-1]
@@ -574,8 +758,8 @@ def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
 
     plan=tiered_entry_plan(df,levels,stage)
 
-    return {
-        "version":"V5.1",
+    payload = {
+        "version":"V6.0 Final",
         "data_date":str(df.index[-1].date()),
         "strategy":s.name,
         "stage":stage,
@@ -599,9 +783,11 @@ def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
         "above_ma20":above_ma20,
         "market_regime":regime,
         "ml_signal":ml,
+        "model_consensus":models,
         "ensemble_signal":ensemble,
         "manual_inputs":manual,
         "backtest_confidence":confidence,
+        "data_quality":data_quality or {"score":0,"rows":[]},
         "out_of_sample":{
             "trades":int(best["trades_test"]),
             "win_rate":float(best["win_rate_test"]),
@@ -611,6 +797,9 @@ def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
             "cagr":float(best["cagr_test"])
         }
     }
+    payload["decision_explanation"] = explain_decision(payload)
+    payload["confidence_grade"] = confidence_grade(payload)
+    return payload
 
 def save_outputs(df, board, trades, decision, cfg: Config):
     out=Path(cfg.reports_dir); out.mkdir(parents=True, exist_ok=True)
@@ -637,60 +826,75 @@ def save_outputs(df, board, trades, decision, cfg: Config):
     )
     confidence = decision["backtest_confidence"]
     regime = decision["market_regime"]
-    ml = decision["ml_signal"]
-    ml_text = (
-        f"{ml['probability']:.1%}｜AUC {ml['auc']:.3f}｜可信度 {ml['confidence']}"
-        if ml.get("probability") is not None and ml.get("auc") is not None
-        else "資料不足"
-    )
+    models = decision["model_consensus"]
+    model_rows = "".join(
+        f"<li>{m['name']}：上漲機率 {m['probability']:.1%}｜AUC {m['auc']:.3f}</li>"
+        for m in models.get("models", [])
+    ) or "<li>資料不足</li>"
     bars = "".join(
         (
-            f"<div style='margin:8px 0'><div>{k}：資料未提供</div>"
-            f"<div style='background:#eee;border-radius:10px;height:10px'></div></div>"
+            f"<div style='margin:8px 0'><div>{k}：資料未提供</div><div style='background:#eee;border-radius:10px;height:10px'></div></div>"
             if v is None else
-            f"<div style='margin:8px 0'><div>{k}：{v}%</div>"
-            f"<div style='background:#eee;border-radius:10px;height:10px'>"
-            f"<div style='width:{v}%;background:#555;height:10px;border-radius:10px'></div></div></div>"
+            f"<div style='margin:8px 0'><div>{k}：{v}%</div><div style='background:#eee;border-radius:10px;height:10px'><div style='width:{v}%;background:#555;height:10px;border-radius:10px'></div></div></div>"
         )
         for k,v in decision["bottom_breakdown"].items()
     )
+    market_rows = "".join(
+        f"<li>{k}：{'資料未提供' if v is None else str(v)+'分'}</li>"
+        for k,v in regime["parts"].items()
+    )
+    explain = decision["decision_explanation"]
+    pos = "".join(f"<li>{x}</li>" for x in explain["positive"]) or "<li>目前沒有明確支持理由</li>"
+    neg = "".join(f"<li>{x}</li>" for x in explain["negative"]) or "<li>目前沒有主要反對理由</li>"
+    missing = "".join(f"<li>{x}</li>" for x in explain["missing"]) or "<li>主要資料齊全</li>"
     plan = decision["entry_plan"]
+    grade = decision["confidence_grade"]
     html=f"""<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-    <div style="max-width:620px;margin:20px auto;padding:22px;border-radius:18px;box-shadow:0 4px 18px #bbb;font-family:-apple-system;line-height:1.55">
-    <h2>00631L 每日決策 V5.1</h2><p>資料截止：{decision['data_date']}</p>
+    <div style="max-width:680px;margin:20px auto;padding:22px;border-radius:18px;box-shadow:0 4px 18px #bbb;font-family:-apple-system;line-height:1.55">
+    <h2>00631L 每日決策 V6.0 Final</h2><p>資料截止：{decision['data_date']}</p>
     <h1>{decision['action']}</h1>
+    <p>決策信心：<b>{grade['grade']}級（{grade['score']}/100）</b>｜資料完整度：{decision['data_quality']['score']}/100</p>
     <p>落底進度：<b>{decision['bottom_progress_pct']}%</b>｜市場環境：<b>{regime['label']} {regime['score']}/100</b></p>
     <p>階段：{decision['stage']}｜建議持股：{decision['suggested_position_pct']}%</p>
     <p>參考收盤：{decision['reference_close']:.2f}</p>
-    <hr><h3>分批價位</h3>
+
+    <hr><h3>分批價位與風險</h3>
     <p>第一筆：{plan['first']:.2f}（{plan['first_note']}）</p>
     <p>第二筆：{plan['second']:.2f}</p>
     <p>第三筆：{plan['third']:.2f}</p>
-    <p style='font-size:14px;color:#555'>各層最小間距：{plan['min_gap']:.2f}</p>
-    <p>停止加碼／風險線：{plan['stop']:.2f}</p>
+    <p>停止加碼／防守線：{plan['stop']:.2f}</p>
     <p>下方支撐：{decision['support_label']} {decision['support']:.2f}</p>
     <p>上方壓力：{decision['resistance_label']} {decision['resistance']:.2f}</p>
     {reclaim_text}
+
+    <hr><h3>支持進場理由</h3><ul>{pos}</ul>
+    <h3>反對進場理由</h3><ul>{neg}</ul>
+    <h3>缺少的資料或確認</h3><ul>{missing}</ul>
+
     <hr><h3>落底進度拆解</h3>{bars}
-    <hr><h3>策略與模型</h3>
+    <hr><h3>市場環境拆解</h3><ul>{market_rows}</ul>
+
+    <hr><h3>策略與模型共識</h3>
     <p>Top 5策略投票：{decision['ensemble_signal']['vote_ratio']:.0%}</p>
-    <p>ML未來5日上漲機率：{ml_text}</p>
+    <ul>{model_rows}</ul>
+    <p>多模型平均上漲機率：{'資料不足' if models.get('probability') is None else f"{models['probability']:.1%}"}</p>
     <p>樣本外交易：{decision['out_of_sample']['trades']}筆｜勝率：{decision['out_of_sample']['win_rate']:.1%}｜PF：{decision['out_of_sample']['profit_factor']:.2f}</p>
     <p>回測可信度：<b>{confidence['level']}</b>（{confidence['score']}/100）</p>
     <p style='font-size:14px;color:#9a5a00'>{confidence['note']}</p>
-    <p style='color:#777'>機器學習與回測只作為輔助；歷史績效不保證未來結果。</p></div>"""
+    <p style='color:#777'>模型與回測只作為輔助；歷史績效不保證未來結果。</p></div>"""
     (out/"dashboard.html").write_text(html,encoding="utf-8")
 
 def run():
     cfg=Config()
     data=download_all(cfg)
+    quality=data_quality_report(data,cfg.symbols)
     build_db(data,cfg)
     feat=build_features(data)
     Path("data").mkdir(exist_ok=True)
     feat.to_parquet("data/features.parquet")
     board,trades=optimize(feat,cfg)
     manual=read_manual_today("data/manual/manual_inputs.csv")
-    decision=make_decision(feat,board,manual)
+    decision=make_decision(feat,board,manual,quality)
     save_outputs(feat,board,trades,decision,cfg)
     print(json.dumps(decision,ensure_ascii=False,indent=2))
 

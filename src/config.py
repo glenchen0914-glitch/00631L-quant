@@ -11,6 +11,7 @@ class Config:
     slippage_rate: float = 0.0005
     train_ratio: float = 0.70
     min_total_trades: int = 8
+    min_test_trades: int = 5
     top_n: int = 30
     symbols: dict[str, str] = field(default_factory=lambda: {
         "etf": "00631L.TW",

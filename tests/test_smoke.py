@@ -82,7 +82,7 @@ assert plan["second"] - plan["third"] >= plan["min_gap"] * 0.99
 
 board = fake_board()
 decision = make_decision(df, board, manual_missing)
-assert decision["version"] == "V5.1"
+assert decision["version"] == "V6.0 Final"
 assert decision["data_status"]["融資"] == "資料未提供"
 assert decision["entry_plan"]["first"] > decision["entry_plan"]["second"]
 assert decision["entry_plan"]["second"] > decision["entry_plan"]["third"]
@@ -96,7 +96,7 @@ with tempfile.TemporaryDirectory() as td:
         assert (report_dir / filename).exists()
     html = (report_dir / "dashboard.html").read_text(encoding="utf-8")
     assert "資料未提供" in html
-    assert "V5.1" in html
+    assert "V6.0 Final" in html
 
 print("PASS: 離線煙霧測試")
 print({

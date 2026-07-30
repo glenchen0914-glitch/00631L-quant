@@ -1,11 +1,12 @@
-V5.1 更新步驟
+V6.0 Final 更新步驟
 
 1. 解壓縮 ZIP。
 2. 覆蓋電腦中的 00631L-quant Repository 資料夾。
-3. 刪除舊 Notebook：notebooks/00631L_Colab_V5_0.ipynb
-4. GitHub Desktop Summary：Update to V5.1 tested
+3. 刪除舊 Notebook：notebooks/00631L_Colab_V5_1.ipynb
+4. GitHub Desktop Summary：Update to V6.0 Final
 5. Commit to main。
 6. Push origin。
-7. GitHub 開啟 notebooks/00631L_Colab_V5_1.ipynb。
+7. GitHub 開啟 notebooks/00631L_Colab_V6_0_Final.ipynb。
 8. Open in Colab。
 9. 執行階段 → 全部執行。
+10. 確認每日決策卡、排行榜及波段追蹤表正常顯示。

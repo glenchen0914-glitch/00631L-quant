@@ -1,4 +1,4 @@
-name: Daily 00631L V5.1 Report
+name: Daily 00631L V6.0 Final
 
 on:
   workflow_dispatch:
@@ -26,6 +26,9 @@ jobs:
 
       - name: Offline smoke test
         run: python tests/test_smoke.py
+
+      - name: Final scenario tests
+        run: python tests/test_final.py
 
       - name: Run pipeline
         run: python run_pipeline.py
