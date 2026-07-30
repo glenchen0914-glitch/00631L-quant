@@ -1,50 +1,60 @@
-# 00631L Quant V10 Auto Final
+# 00631L Quant V16 Unified Final
 
-這是全自動最終版。
+這是將 V11～V16 合併後的統一版本，不再拆成多個小版本。
 
-## 日常使用
+## 已整合
 
-完成首次設定後：
+- GitHub Actions 全自動更新
+- LINE 推播
+- 決策歷史
+- 部位狀態與手動交易紀錄
+- 多商品掃描與排名
+- 策略研究歷史
+- 多模型決策
+- Walk-forward 驗證
+- Colab 備援
 
-- 不需要每天開桌機
-- 不需要每天進入 GitHub
-- 不需要每天執行 Colab
-- GitHub Actions 會在台灣時間週一至週五 14:35 自動執行
-- 成功後更新 Repository 的報告
-- 設定 LINE Secrets 後會自動推播
+## 每天使用
 
-## 自動流程
+完成 GitHub Actions 與 LINE Secrets 設定後，不需要開桌機。
 
-1. 安裝套件
-2. 語法檢查
-3. 離線煙霧測試
-4. 多市場情境測試
-5. 完整最佳化器測試
-6. 下載真實行情
-7. 執行回測、Walk-forward 與模型
-8. 產生每日決策
-9. 更新決策歷史
-10. LINE 推播
-11. 驗證輸出
-12. 上傳 Artifact
-13. 只有全部成功才 Commit 報告
+系統會在台灣時間週一至週五 14:35 自動執行。
 
-## 主要報告
+## 交易狀態
 
-- `reports/README.md`
-- `reports/dashboard.html`
-- `reports/daily_decision.json`
-- `reports/strategy_leaderboard.csv`
-- `reports/wave_tracking.csv`
-- `reports/decision_history.csv`
+在 `data/manual/trades.csv` 填入真實成交：
 
-## 手動版本
+```csv
+trade_id,date,side,shares,price,note
+1,2026-07-30,BUY,1000,28.00,第一筆
+```
 
-`notebooks/00631L_Colab_V10_Auto_Final.ipynb`
+系統會更新：
 
-## LINE Secrets
+- `reports/position_state.json`
+- 未實現損益
+- 已實現損益
+- 平均成本
+- 目前股數
 
-- `LINE_CHANNEL_ACCESS_TOKEN`
-- `LINE_USER_ID`
+## 多商品排名
 
-沒有設定 LINE Secrets 時，自動分析仍會正常執行，只跳過 LINE 推播。
+自動輸出：
+
+`reports/universe_ranking.csv`
+
+目前包含：
+
+- 00631L
+- 00675L
+- 0050
+- 2330
+- 00673R
+- 00981A
+- 00982A
+
+## 策略研究
+
+每日保留前 20 名策略至：
+
+`reports/strategy_research_log.csv`

@@ -1,4 +1,4 @@
-name: 00631L Auto Final
+name: 00631L Unified Final
 
 on:
   workflow_dispatch:
@@ -48,7 +48,7 @@ jobs:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
           LINE_PUSH_REQUIRED: 'false'
-        run: python run_auto.py
+        run: python run_unified.py
 
       - name: Validate outputs
         run: |
@@ -57,6 +57,8 @@ jobs:
           test -s reports/strategy_leaderboard.csv
           test -s reports/wave_tracking.csv
           test -s reports/decision_history.csv
+          test -s reports/position_state.json
+          test -s reports/strategy_research_log.csv
           python - <<'PY'
           import json
           from pathlib import Path
@@ -81,5 +83,8 @@ jobs:
           git add -f reports/wave_tracking.csv
           git add -f reports/decision_history.csv
           git add -f reports/README.md
+          git add -f reports/position_state.json
+          git add -f reports/strategy_research_log.csv
+          git add -f reports/universe_ranking.csv || true
           git commit -m "Daily 00631L auto report" || exit 0
           git push
