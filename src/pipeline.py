@@ -241,32 +241,57 @@ def bottom_progress_breakdown(df: pd.DataFrame, manual: dict) -> dict:
     items["波動"] = 70 if vol20 > 0.45 else 50 if vol20 > 0.30 else 30
 
     margin_change = manual.get("margin_change")
-    items["融資"] = 70 if margin_change is not None and pd.notna(margin_change) and float(margin_change) < 0 else 30
+    margin_available = margin_change is not None and pd.notna(margin_change)
+    if margin_available:
+        items["融資"] = 70 if float(margin_change) < 0 else 30
+        margin_status = "已提供"
+    else:
+        items["融資"] = None
+        margin_status = "資料未提供"
 
     regime = market_regime_score(df)
     items["市場環境"] = regime["score"]
 
     weights = {"周KD":0.18,"RSI":0.12,"日KD":0.10,"MACD":0.12,"均線":0.14,
                "波動":0.08,"融資":0.08,"市場環境":0.18}
-    total = int(round(sum(items[k]*weights[k] for k in items)))
-    return {"score": max(0,min(100,total)), "items": items}
+    available = {k:v for k,v in items.items() if v is not None}
+    weight_sum = sum(weights[k] for k in available)
+    total = int(round(sum(available[k]*weights[k] for k in available) / weight_sum))
+    return {
+        "score": max(0,min(100,total)),
+        "items": items,
+        "data_status": {"融資": margin_status}
+    }
 
 def tiered_entry_plan(df: pd.DataFrame, levels: dict, stage: str) -> dict:
     last = df.iloc[-1]
     close = float(last["close"])
-    atr = float(last["atr14"])
-    support = float(levels["support"])
+    atr = max(float(last["atr14"]), close * 0.015)
     resistance = float(levels["resistance"])
+    recent_low = float(df["low"].tail(20).min())
 
-    first = min(close, max(support, close - 0.35*atr))
-    second = max(support, close - 0.80*atr)
-    third = max(float(df["low"].tail(20).min()), close - 1.30*atr)
-    stop = min(third - 0.35*atr, float(df["low"].tail(20).min()) - 0.10*atr)
+    min_gap = max(0.50 * atr, 0.015 * close)
+    first = close - 0.35 * atr
+    second = min(first - min_gap, close - 0.90 * atr)
+    third = min(second - min_gap, close - 1.45 * atr)
 
-    if stage == "觀察":
-        first_note = "僅觀察，尚未觸發買進"
-    else:
-        first_note = "第一筆試單"
+    floor_price = max(close * 0.55, 0.01)
+    first = max(first, floor_price + 2 * min_gap)
+    second = max(second, floor_price + min_gap)
+    third = max(third, floor_price)
+
+    if second >= first:
+        second = first - min_gap
+    if third >= second:
+        third = second - min_gap
+
+    stop = min(third - max(0.35 * atr, 0.01 * close),
+               recent_low - 0.10 * atr)
+    stop = max(0.01, stop)
+    if stop >= third:
+        stop = max(0.01, third - max(0.35 * atr, 0.01 * close))
+
+    first_note = "僅觀察，尚未觸發買進" if stage == "觀察" else "第一筆試單"
 
     return {
         "first": float(first),
@@ -275,6 +300,7 @@ def tiered_entry_plan(df: pd.DataFrame, levels: dict, stage: str) -> dict:
         "stop": float(stop),
         "first_note": first_note,
         "resistance": resistance,
+        "min_gap": float(min_gap),
     }
 
 
@@ -533,12 +559,12 @@ def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
     ensemble_ratio = ensemble["vote_ratio"]
 
     # V5 綜合決策：落底進度、環境、策略投票、ML輔助共同決定
-    if progress >= 70 and regime["score"] >= 55 and ensemble_ratio >= 0.6 and ml_prob >= 0.55:
-        stage="布局"; position=20
-        action="條件初步確認，可建立20%試單"
-    elif progress >= 78 and regime["score"] >= 65 and ensemble_ratio >= 0.8 and ml_prob >= 0.60 and above_ma20:
+    if progress >= 78 and regime["score"] >= 65 and ensemble_ratio >= 0.8 and ml_prob >= 0.60 and above_ma20:
         stage="加碼"; position=50
         action="多項訊號共振，可提高至50%持股"
+    elif progress >= 70 and regime["score"] >= 55 and ensemble_ratio >= 0.6 and ml_prob >= 0.55:
+        stage="布局"; position=20
+        action="條件初步確認，可建立20%試單"
     elif progress >= 45:
         stage="觀察"; position=0
         action="接近布局區，但仍等待確認"
@@ -549,7 +575,7 @@ def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
     plan=tiered_entry_plan(df,levels,stage)
 
     return {
-        "version":"V5.0",
+        "version":"V5.1",
         "data_date":str(df.index[-1].date()),
         "strategy":s.name,
         "stage":stage,
@@ -557,6 +583,7 @@ def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
         "suggested_position_pct":position,
         "bottom_progress_pct":progress,
         "bottom_breakdown":breakdown["items"],
+        "data_status":breakdown["data_status"],
         "reference_close":close,
         "entry_plan":plan,
         "support":float(levels["support"]),
@@ -617,13 +644,20 @@ def save_outputs(df, board, trades, decision, cfg: Config):
         else "資料不足"
     )
     bars = "".join(
-        f"<div style='margin:8px 0'><div>{k}：{v}%</div><div style='background:#eee;border-radius:10px;height:10px'><div style='width:{v}%;background:#555;height:10px;border-radius:10px'></div></div></div>"
+        (
+            f"<div style='margin:8px 0'><div>{k}：資料未提供</div>"
+            f"<div style='background:#eee;border-radius:10px;height:10px'></div></div>"
+            if v is None else
+            f"<div style='margin:8px 0'><div>{k}：{v}%</div>"
+            f"<div style='background:#eee;border-radius:10px;height:10px'>"
+            f"<div style='width:{v}%;background:#555;height:10px;border-radius:10px'></div></div></div>"
+        )
         for k,v in decision["bottom_breakdown"].items()
     )
     plan = decision["entry_plan"]
     html=f"""<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
     <div style="max-width:620px;margin:20px auto;padding:22px;border-radius:18px;box-shadow:0 4px 18px #bbb;font-family:-apple-system;line-height:1.55">
-    <h2>00631L 每日決策 V5.0</h2><p>資料截止：{decision['data_date']}</p>
+    <h2>00631L 每日決策 V5.1</h2><p>資料截止：{decision['data_date']}</p>
     <h1>{decision['action']}</h1>
     <p>落底進度：<b>{decision['bottom_progress_pct']}%</b>｜市場環境：<b>{regime['label']} {regime['score']}/100</b></p>
     <p>階段：{decision['stage']}｜建議持股：{decision['suggested_position_pct']}%</p>
@@ -632,6 +666,7 @@ def save_outputs(df, board, trades, decision, cfg: Config):
     <p>第一筆：{plan['first']:.2f}（{plan['first_note']}）</p>
     <p>第二筆：{plan['second']:.2f}</p>
     <p>第三筆：{plan['third']:.2f}</p>
+    <p style='font-size:14px;color:#555'>各層最小間距：{plan['min_gap']:.2f}</p>
     <p>停止加碼／風險線：{plan['stop']:.2f}</p>
     <p>下方支撐：{decision['support_label']} {decision['support']:.2f}</p>
     <p>上方壓力：{decision['resistance_label']} {decision['resistance']:.2f}</p>
