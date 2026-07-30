@@ -1,28 +1,38 @@
-name: Daily 00631L V6.0 Final
+name: 00631L Auto Final
 
 on:
   workflow_dispatch:
   schedule:
-    # 台灣時間週一至週五 07:30 = UTC 前一天 23:30（週日至週四）
-    - cron: '30 23 * * 0-4'
+    # 台灣時間週一至週五 14:35 = UTC 06:35
+    - cron: '35 6 * * 1-5'
 
 permissions:
   contents: write
 
-jobs:
-  run:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
+concurrency:
+  group: 00631l-daily
+  cancel-in-progress: false
 
-      - uses: actions/setup-python@v5
+jobs:
+  daily:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install dependencies
+      - name: Install
         run: pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m compileall -q src tests run_pipeline.py run_auto.py
 
       - name: Offline smoke test
         run: python tests/test_smoke.py
@@ -33,16 +43,43 @@ jobs:
       - name: Full optimizer test
         run: python tests/test_optimize_full.py
 
-      - name: Run pipeline
-        run: python run_pipeline.py
+      - name: Run production pipeline
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+          LINE_PUSH_REQUIRED: 'false'
+        run: python run_auto.py
 
-      - name: Commit daily reports
+      - name: Validate outputs
+        run: |
+          test -s reports/daily_decision.json
+          test -s reports/dashboard.html
+          test -s reports/strategy_leaderboard.csv
+          test -s reports/wave_tracking.csv
+          test -s reports/decision_history.csv
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          json.loads(Path("reports/daily_decision.json").read_text(encoding="utf-8"))
+          print("✅ 輸出驗證完成")
+          PY
+
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 00631L-report-${{ github.run_number }}
+          path: reports/
+          retention-days: 30
+
+      - name: Commit successful reports only
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f reports/strategy_leaderboard.csv
           git add -f reports/daily_decision.json
           git add -f reports/dashboard.html
+          git add -f reports/strategy_leaderboard.csv
           git add -f reports/wave_tracking.csv
-          git commit -m "Daily 00631L report" || exit 0
+          git add -f reports/decision_history.csv
+          git add -f reports/README.md
+          git commit -m "Daily 00631L auto report" || exit 0
           git push
