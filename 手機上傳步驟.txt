@@ -1,12 +1,15 @@
-V4.5.2 更新步驟
+V5.0 更新步驟
 
 1. 解壓縮 ZIP。
-2. 把內容複製到電腦的 00631L-quant Repository 資料夾。
+2. 把全部內容複製到電腦上的 00631L-quant Repository 資料夾。
 3. 選擇「取代目的地中的檔案」。
-4. 確認舊檔 notebooks/00631L_Colab_V4_5_1.ipynb 已刪除。
-5. GitHub Desktop 的 Summary 輸入：Update to V4.5.2
+4. 確認舊 Notebook 已刪除：
+   notebooks/00631L_Colab_V4_5_2.ipynb
+5. GitHub Desktop 的 Summary 輸入：
+   Update to V5.0
 6. 按 Commit to main。
 7. 按 Push origin。
-8. 到 GitHub 開啟 notebooks/00631L_Colab_V4_5_2.ipynb。
+8. 到 GitHub 開啟：
+   notebooks/00631L_Colab_V5_0.ipynb
 9. 按 Open in Colab。
 10. 在 Colab 選「執行階段」→「全部執行」。

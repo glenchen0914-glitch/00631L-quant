@@ -3,3 +3,4 @@ numpy>=1.26
 yfinance>=0.2.54
 pyarrow>=16.0
 plotly>=5.22
+scikit-learn>=1.5

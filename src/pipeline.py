@@ -6,6 +6,9 @@ import json, math, sqlite3
 import numpy as np
 import pandas as pd
 import yfinance as yf
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import roc_auc_score
+from sklearn.model_selection import TimeSeriesSplit
 from .config import Config
 
 def download_one(symbol: str, start: str) -> pd.DataFrame:
@@ -100,6 +103,180 @@ def build_features(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
     cols = [c for c in df.columns if "_above_ma20" in c or "_ret1" in c]
     df[cols] = df[cols].ffill()
     return df.dropna(subset=["ma240","week_k","rsi14"]).copy()
+
+
+def add_ml_features(df: pd.DataFrame) -> pd.DataFrame:
+    x = df.copy()
+    x["ret1"] = x["close"].pct_change()
+    x["ret5"] = x["close"].pct_change(5)
+    x["ret20"] = x["close"].pct_change(20)
+    x["vol20"] = x["ret1"].rolling(20).std() * np.sqrt(252)
+    x["ma5_gap"] = x["close"] / x["ma5"] - 1
+    x["ma20_gap"] = x["close"] / x["ma20"] - 1
+    x["ma60_gap"] = x["close"] / x["ma60"] - 1
+    x["bb_pos"] = (x["close"] - x["bb_low"]) / (x["bb_up"] - x["bb_low"]).replace(0, np.nan)
+    x["atr_pct"] = x["atr14"] / x["close"]
+    x["kd_gap"] = x["k"] - x["d"]
+    x["week_kd_gap"] = x["week_k"] - x["week_d"]
+
+    for name in ["twii","nasdaq","sox","sp500","vix","dxy","us10y","tsm_adr"]:
+        ret_col = f"{name}_ret1"
+        if ret_col not in x:
+            x[ret_col] = np.nan
+
+    # 預測未來5日是否上漲超過2%，只作為輔助訊號
+    x["target_5d"] = ((x["close"].shift(-5) / x["close"] - 1) > 0.02).astype(int)
+    return x
+
+ML_FEATURES = [
+    "rsi14","k","d","week_k","week_d","macd_hist","ma5_gap","ma20_gap","ma60_gap",
+    "bb_pos","atr_pct","ret1","ret5","ret20","vol20","kd_gap","week_kd_gap",
+    "twii_ret1","nasdaq_ret1","sox_ret1","sp500_ret1","vix_ret1","dxy_ret1",
+    "us10y_ret1","tsm_adr_ret1"
+]
+
+def train_ml_model(df: pd.DataFrame) -> dict:
+    x = add_ml_features(df).replace([np.inf,-np.inf], np.nan)
+    model_df = x.dropna(subset=ML_FEATURES + ["target_5d"]).copy()
+    if len(model_df) < 500:
+        return {"probability": None, "auc": None, "confidence": "不足", "note": "可用資料不足500筆"}
+
+    X = model_df[ML_FEATURES]
+    y = model_df["target_5d"].astype(int)
+    tscv = TimeSeriesSplit(n_splits=5)
+
+    aucs = []
+    last_model = None
+    for train_idx, test_idx in tscv.split(X):
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+        if y_train.nunique() < 2 or y_test.nunique() < 2:
+            continue
+        model = RandomForestClassifier(
+            n_estimators=300, max_depth=5, min_samples_leaf=12,
+            class_weight="balanced", random_state=42, n_jobs=-1
+        )
+        model.fit(X_train, y_train)
+        pred = model.predict_proba(X_test)[:,1]
+        aucs.append(roc_auc_score(y_test, pred))
+        last_model = model
+
+    if last_model is None:
+        return {"probability": None, "auc": None, "confidence": "不足", "note": "時間切分後類別不足"}
+
+    last_model.fit(X, y)
+    latest = x[ML_FEATURES].iloc[[-1]]
+    if latest.isna().any(axis=None):
+        return {"probability": None, "auc": float(np.mean(aucs)) if aucs else None,
+                "confidence": "不足", "note": "最新一日仍有缺值"}
+
+    prob = float(last_model.predict_proba(latest)[:,1][0])
+    auc = float(np.mean(aucs)) if aucs else None
+    if auc is None:
+        confidence = "不足"
+    elif auc >= 0.60:
+        confidence = "中"
+    elif auc >= 0.55:
+        confidence = "偏低"
+    else:
+        confidence = "很低"
+
+    return {
+        "probability": prob,
+        "auc": auc,
+        "confidence": confidence,
+        "note": "機器學習只作為輔助，不單獨決定交易"
+    }
+
+def market_regime_score(df: pd.DataFrame) -> dict:
+    last = df.iloc[-1]
+    parts = {}
+    parts["台股趨勢"] = 20 if bool(last.get("twii_above_ma20", False)) else 0
+    parts["NASDAQ"] = 15 if bool(last.get("nasdaq_above_ma20", False)) else 0
+    parts["SOX"] = 20 if bool(last.get("sox_above_ma20", False)) else 0
+    parts["S&P500"] = 10 if bool(last.get("sp500_above_ma20", False)) else 0
+    parts["台積電ADR"] = 15 if bool(last.get("tsm_adr_above_ma20", False)) else 0
+
+    vix_ret = float(last.get("vix_ret1", 0) or 0)
+    parts["VIX"] = 10 if vix_ret <= 0 else (5 if vix_ret < 0.03 else 0)
+
+    dxy_ret = float(last.get("dxy_ret1", 0) or 0)
+    parts["美元"] = 5 if dxy_ret <= 0 else 0
+
+    us10y_ret = float(last.get("us10y_ret1", 0) or 0)
+    parts["美債殖利率"] = 5 if us10y_ret <= 0 else 0
+
+    score = int(sum(parts.values()))
+    if score >= 75:
+        label = "偏多"
+    elif score >= 55:
+        label = "中性偏多"
+    elif score >= 40:
+        label = "中性"
+    elif score >= 25:
+        label = "中性偏空"
+    else:
+        label = "偏空"
+    return {"score": score, "label": label, "parts": parts}
+
+def bottom_progress_breakdown(df: pd.DataFrame, manual: dict) -> dict:
+    last = df.iloc[-1]
+    items = {}
+
+    wk = float(last["week_k"])
+    items["周KD"] = 100 if wk < 20 else 70 if wk < 30 else 40 if wk < 40 else 10
+
+    rsi_v = float(last["rsi14"])
+    items["RSI"] = 100 if rsi_v < 30 else 70 if rsi_v < 40 else 30 if rsi_v < 50 else 10
+
+    items["日KD"] = 80 if float(last["k"]) > float(last["d"]) else 20
+    items["MACD"] = 80 if float(last["macd_hist"]) > float(df["macd_hist"].iloc[-2]) else 20
+
+    close = float(last["close"])
+    ma20 = float(last["ma20"])
+    ma60 = float(last["ma60"])
+    items["均線"] = 80 if close > ma20 else 50 if close > ma60 else 20
+
+    vol20 = float(df["close"].pct_change().rolling(20).std().iloc[-1] * np.sqrt(252))
+    items["波動"] = 70 if vol20 > 0.45 else 50 if vol20 > 0.30 else 30
+
+    margin_change = manual.get("margin_change")
+    items["融資"] = 70 if margin_change is not None and pd.notna(margin_change) and float(margin_change) < 0 else 30
+
+    regime = market_regime_score(df)
+    items["市場環境"] = regime["score"]
+
+    weights = {"周KD":0.18,"RSI":0.12,"日KD":0.10,"MACD":0.12,"均線":0.14,
+               "波動":0.08,"融資":0.08,"市場環境":0.18}
+    total = int(round(sum(items[k]*weights[k] for k in items)))
+    return {"score": max(0,min(100,total)), "items": items}
+
+def tiered_entry_plan(df: pd.DataFrame, levels: dict, stage: str) -> dict:
+    last = df.iloc[-1]
+    close = float(last["close"])
+    atr = float(last["atr14"])
+    support = float(levels["support"])
+    resistance = float(levels["resistance"])
+
+    first = min(close, max(support, close - 0.35*atr))
+    second = max(support, close - 0.80*atr)
+    third = max(float(df["low"].tail(20).min()), close - 1.30*atr)
+    stop = min(third - 0.35*atr, float(df["low"].tail(20).min()) - 0.10*atr)
+
+    if stage == "觀察":
+        first_note = "僅觀察，尚未觸發買進"
+    else:
+        first_note = "第一筆試單"
+
+    return {
+        "first": float(first),
+        "second": float(second),
+        "third": float(third),
+        "stop": float(stop),
+        "first_note": first_note,
+        "resistance": resistance,
+    }
+
 
 @dataclass(frozen=True)
 class Strategy:
@@ -314,60 +491,74 @@ def _backtest_confidence(best: pd.Series) -> dict:
     return {"level": level, "score": score, "note": note, "trades": trades}
 
 
+
+def strategy_ensemble_signal(df: pd.DataFrame, board: pd.DataFrame, top_n: int = 5) -> dict:
+    top = board.head(min(top_n, len(board)))
+    votes = []
+    names = []
+    for _, row in top.iterrows():
+        s=Strategy(row["name"],int(row["week_k_max"]),int(row["rsi_max"]),
+                   bool(row["require_k_cross"]),bool(row["require_macd_improve"]),
+                   bool(row["require_close_ma20"]),bool(row["require_twii_ma20"]),
+                   float(row["stop_loss"]),float(row["take_profit"]),int(row["max_hold"]))
+        sig = bool(signal_for(df, s).iloc[-1])
+        votes.append(1 if sig else 0)
+        names.append({"name": s.name, "signal": sig, "score": float(row["score"])})
+    ratio = sum(votes)/len(votes) if votes else 0
+    return {"vote_ratio": ratio, "members": names}
+
+
 def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
     best=board.iloc[0]
     s=Strategy(best["name"],int(best["week_k_max"]),int(best["rsi_max"]),
                bool(best["require_k_cross"]),bool(best["require_macd_improve"]),
                bool(best["require_close_ma20"]),bool(best["require_twii_ma20"]),
                float(best["stop_loss"]),float(best["take_profit"]),int(best["max_hold"]))
-    sig=signal_for(df,s)
-    last=df.iloc[-1]
-    progress,reasons=bottom_progress(df,manual)
+
     levels=_nearest_levels(df)
     confidence=_backtest_confidence(best)
+    regime=market_regime_score(df)
+    breakdown=bottom_progress_breakdown(df,manual)
+    ml=train_ml_model(df)
+    ensemble=strategy_ensemble_signal(df,board,top_n=5)
 
+    last=df.iloc[-1]
+    close=float(last["close"])
+    progress=breakdown["score"]
     k_cross=bool(last["k"]>last["d"] and df["k"].iloc[-2]<=df["d"].iloc[-2])
     macd_up=bool(last["macd_hist"]>df["macd_hist"].iloc[-2])
     above_ma20=bool(last["close"]>last["ma20"])
-    close=float(last["close"])
 
-    if bool(sig.iloc[-1]):
+    ml_prob = ml["probability"] if ml["probability"] is not None else 0.5
+    ensemble_ratio = ensemble["vote_ratio"]
+
+    # V5 綜合決策：落底進度、環境、策略投票、ML輔助共同決定
+    if progress >= 70 and regime["score"] >= 55 and ensemble_ratio >= 0.6 and ml_prob >= 0.55:
         stage="布局"; position=20
-        action="下一交易日可先建立20%試單"
-        entry_low=max(levels["support"], close*0.98)
-        entry_high=close*1.01
-        entry_note="以目前價格附近分批，不追高；跌破支撐停止加碼"
-    elif progress>=75 and k_cross and macd_up and above_ma20:
+        action="條件初步確認，可建立20%試單"
+    elif progress >= 78 and regime["score"] >= 65 and ensemble_ratio >= 0.8 and ml_prob >= 0.60 and above_ma20:
         stage="加碼"; position=50
-        action="訊號確認後可提高至50%持股"
-        entry_low=close*0.99
-        entry_high=min(levels["resistance"], close*1.02)
-        entry_note="只在站穩確認價位後加碼"
-    elif progress>=45:
+        action="多項訊號共振，可提高至50%持股"
+    elif progress >= 45:
         stage="觀察"; position=0
-        action="不進場，等待止跌確認"
-        entry_low=close
-        entry_high=levels["reclaim_level"] if levels["reclaim_level"] is not None else levels["resistance"]
-        entry_note="目前不是正式進場區；先觀察是否站回待收復價位"
+        action="接近布局區，但仍等待確認"
     else:
         stage="觀察"; position=0
         action="不進場，維持0%"
-        entry_low=close
-        entry_high=levels["reclaim_level"] if levels["reclaim_level"] is not None else levels["resistance"]
-        entry_note="趨勢尚未確認，價位僅供觀察，不代表建議買進"
+
+    plan=tiered_entry_plan(df,levels,stage)
 
     return {
+        "version":"V5.0",
         "data_date":str(df.index[-1].date()),
         "strategy":s.name,
         "stage":stage,
         "action":action,
         "suggested_position_pct":position,
         "bottom_progress_pct":progress,
-        "progress_reasons":reasons,
+        "bottom_breakdown":breakdown["items"],
         "reference_close":close,
-        "entry_range_low":float(entry_low),
-        "entry_range_high":float(max(entry_low, entry_high)),
-        "entry_note":entry_note,
+        "entry_plan":plan,
         "support":float(levels["support"]),
         "support_label":levels["support_label"],
         "resistance":float(levels["resistance"]),
@@ -379,6 +570,9 @@ def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
         "daily_d":float(last["d"]),
         "macd_improving":macd_up,
         "above_ma20":above_ma20,
+        "market_regime":regime,
+        "ml_signal":ml,
+        "ensemble_signal":ensemble,
         "manual_inputs":manual,
         "backtest_confidence":confidence,
         "out_of_sample":{
@@ -415,24 +609,41 @@ def save_outputs(df, board, trades, decision, cfg: Config):
         if decision.get("reclaim_level") is not None else ""
     )
     confidence = decision["backtest_confidence"]
+    regime = decision["market_regime"]
+    ml = decision["ml_signal"]
+    ml_text = (
+        f"{ml['probability']:.1%}｜AUC {ml['auc']:.3f}｜可信度 {ml['confidence']}"
+        if ml.get("probability") is not None and ml.get("auc") is not None
+        else "資料不足"
+    )
+    bars = "".join(
+        f"<div style='margin:8px 0'><div>{k}：{v}%</div><div style='background:#eee;border-radius:10px;height:10px'><div style='width:{v}%;background:#555;height:10px;border-radius:10px'></div></div></div>"
+        for k,v in decision["bottom_breakdown"].items()
+    )
+    plan = decision["entry_plan"]
     html=f"""<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-    <div style="max-width:560px;margin:20px auto;padding:20px;border-radius:18px;box-shadow:0 4px 18px #bbb;font-family:-apple-system;line-height:1.55">
-    <h2>00631L 每日決策</h2><p>資料截止：{decision['data_date']}</p>
+    <div style="max-width:620px;margin:20px auto;padding:22px;border-radius:18px;box-shadow:0 4px 18px #bbb;font-family:-apple-system;line-height:1.55">
+    <h2>00631L 每日決策 V5.0</h2><p>資料截止：{decision['data_date']}</p>
     <h1>{decision['action']}</h1>
-    <p>落底進度：<b>{decision['bottom_progress_pct']}%</b></p>
+    <p>落底進度：<b>{decision['bottom_progress_pct']}%</b>｜市場環境：<b>{regime['label']} {regime['score']}/100</b></p>
     <p>階段：{decision['stage']}｜建議持股：{decision['suggested_position_pct']}%</p>
     <p>參考收盤：{decision['reference_close']:.2f}</p>
-    <p>觀察／進場價位：{decision['entry_range_low']:.2f}～{decision['entry_range_high']:.2f}</p>
-    <p style='font-size:14px;color:#555'>{decision['entry_note']}</p>
+    <hr><h3>分批價位</h3>
+    <p>第一筆：{plan['first']:.2f}（{plan['first_note']}）</p>
+    <p>第二筆：{plan['second']:.2f}</p>
+    <p>第三筆：{plan['third']:.2f}</p>
+    <p>停止加碼／風險線：{plan['stop']:.2f}</p>
     <p>下方支撐：{decision['support_label']} {decision['support']:.2f}</p>
     <p>上方壓力：{decision['resistance_label']} {decision['resistance']:.2f}</p>
     {reclaim_text}
-    <p>周KD：{decision['week_k']:.1f}｜日K/D：{decision['daily_k']:.1f}/{decision['daily_d']:.1f}</p>
-    <hr>
+    <hr><h3>落底進度拆解</h3>{bars}
+    <hr><h3>策略與模型</h3>
+    <p>Top 5策略投票：{decision['ensemble_signal']['vote_ratio']:.0%}</p>
+    <p>ML未來5日上漲機率：{ml_text}</p>
     <p>樣本外交易：{decision['out_of_sample']['trades']}筆｜勝率：{decision['out_of_sample']['win_rate']:.1%}｜PF：{decision['out_of_sample']['profit_factor']:.2f}</p>
     <p>回測可信度：<b>{confidence['level']}</b>（{confidence['score']}/100）</p>
     <p style='font-size:14px;color:#9a5a00'>{confidence['note']}</p>
-    <p style='color:#777'>歷史回測不保證未來績效；支撐與壓力會隨每日行情變動。</p></div>"""
+    <p style='color:#777'>機器學習與回測只作為輔助；歷史績效不保證未來結果。</p></div>"""
     (out/"dashboard.html").write_text(html,encoding="utf-8")
 
 def run():

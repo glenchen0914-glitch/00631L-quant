@@ -1,4 +1,4 @@
-name: Daily 00631L Report
+name: Daily 00631L V5 Report
 
 on:
   workflow_dispatch:
