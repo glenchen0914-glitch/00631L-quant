@@ -228,40 +228,159 @@ def bottom_progress(df: pd.DataFrame, manual: dict) -> tuple[int,list[str]]:
         if float(event)>=60: reasons.append("重大事件風險偏高")
     return max(0,min(100,int(round(score)))),reasons
 
+
+def _nearest_levels(df: pd.DataFrame) -> dict:
+    """只把目前價格下方的價位稱為支撐，上方價位稱為壓力。"""
+    last = df.iloc[-1]
+    close = float(last["close"])
+    recent = df.tail(min(120, len(df))).copy()
+
+    candidate_supports = {
+        "10日低點": float(recent["low"].tail(10).min()),
+        "20日低點": float(recent["low"].tail(20).min()),
+        "60日低點": float(recent["low"].tail(60).min()),
+        "MA5": float(last["ma5"]),
+        "MA10": float(last["ma10"]),
+        "MA20": float(last["ma20"]),
+        "MA60": float(last["ma60"]),
+        "布林下緣": float(last["bb_low"]),
+    }
+    candidate_resistances = {
+        "10日高點": float(recent["high"].tail(10).max()),
+        "20日高點": float(recent["high"].tail(20).max()),
+        "60日高點": float(recent["high"].tail(60).max()),
+        "MA5": float(last["ma5"]),
+        "MA10": float(last["ma10"]),
+        "MA20": float(last["ma20"]),
+        "MA60": float(last["ma60"]),
+        "布林中軸": float(last["bb_mid"]),
+        "布林上緣": float(last["bb_up"]),
+    }
+
+    supports = [(name, value) for name, value in candidate_supports.items()
+                if np.isfinite(value) and value <= close]
+    resistances = [(name, value) for name, value in candidate_resistances.items()
+                   if np.isfinite(value) and value >= close]
+
+    support_name, support = (
+        max(supports, key=lambda x: x[1])
+        if supports else ("近期最低價", float(recent["low"].min()))
+    )
+    resistance_name, resistance = (
+        min(resistances, key=lambda x: x[1])
+        if resistances else ("近期最高價", float(recent["high"].max()))
+    )
+
+    broken_levels = sorted(
+        [(name, value) for name, value in candidate_supports.items()
+         if np.isfinite(value) and value > close],
+        key=lambda x: x[1]
+    )
+    reclaim_name, reclaim = broken_levels[0] if broken_levels else (None, None)
+
+    return {
+        "support": support,
+        "support_label": support_name,
+        "resistance": resistance,
+        "resistance_label": resistance_name,
+        "reclaim_level": reclaim,
+        "reclaim_label": reclaim_name,
+    }
+
+def _backtest_confidence(best: pd.Series) -> dict:
+    """依樣本外交易筆數與PF穩定性標示可信度。"""
+    trades = int(best["trades_test"])
+    pf = float(best["profit_factor_test"])
+    train_pf = float(best["profit_factor_train"])
+
+    if trades < 5:
+        level, note, score = "很低", "樣本外交易少於5筆，只能視為初步線索", 15
+    elif trades < 10:
+        level, note, score = "低", "樣本外交易不足10筆，PF容易被少數交易放大", 30
+    elif trades < 20:
+        level, note, score = "中低", "樣本外交易筆數仍偏少，需持續累積", 50
+    elif trades < 40:
+        level, note, score = "中", "樣本外交易筆數已有一定參考性", 70
+    else:
+        level, note, score = "中高", "樣本外交易筆數較充足，但仍不代表未來績效", 85
+
+    if pf > 4:
+        note += "；PF高於4，須特別防範過度擬合"
+        score = max(10, score - 15)
+    if abs(pf - train_pf) / max(abs(train_pf), 1e-9) > 0.75:
+        note += "；樣本內外PF差異偏大"
+        score = max(10, score - 15)
+
+    return {"level": level, "score": score, "note": note, "trades": trades}
+
+
 def make_decision(df: pd.DataFrame, board: pd.DataFrame, manual: dict):
     best=board.iloc[0]
     s=Strategy(best["name"],int(best["week_k_max"]),int(best["rsi_max"]),
                bool(best["require_k_cross"]),bool(best["require_macd_improve"]),
                bool(best["require_close_ma20"]),bool(best["require_twii_ma20"]),
                float(best["stop_loss"]),float(best["take_profit"]),int(best["max_hold"]))
-    sig=signal_for(df,s); last=df.iloc[-1]
+    sig=signal_for(df,s)
+    last=df.iloc[-1]
     progress,reasons=bottom_progress(df,manual)
+    levels=_nearest_levels(df)
+    confidence=_backtest_confidence(best)
+
     k_cross=bool(last["k"]>last["d"] and df["k"].iloc[-2]<=df["d"].iloc[-2])
     macd_up=bool(last["macd_hist"]>df["macd_hist"].iloc[-2])
     above_ma20=bool(last["close"]>last["ma20"])
+    close=float(last["close"])
+
     if bool(sig.iloc[-1]):
-        stage="布局"; position=20; action="下一交易日開盤建立20%部位"
+        stage="布局"; position=20
+        action="下一交易日可先建立20%試單"
+        entry_low=max(levels["support"], close*0.98)
+        entry_high=close*1.01
+        entry_note="以目前價格附近分批，不追高；跌破支撐停止加碼"
     elif progress>=75 and k_cross and macd_up and above_ma20:
-        stage="加碼"; position=50; action="可提高至50%持股"
+        stage="加碼"; position=50
+        action="訊號確認後可提高至50%持股"
+        entry_low=close*0.99
+        entry_high=min(levels["resistance"], close*1.02)
+        entry_note="只在站穩確認價位後加碼"
     elif progress>=45:
-        stage="觀察"; position=0; action="不進場，等待確認"
+        stage="觀察"; position=0
+        action="不進場，等待止跌確認"
+        entry_low=close
+        entry_high=levels["reclaim_level"] if levels["reclaim_level"] is not None else levels["resistance"]
+        entry_note="目前不是正式進場區；先觀察是否站回待收復價位"
     else:
-        stage="觀察"; position=0; action="不進場，維持0%"
+        stage="觀察"; position=0
+        action="不進場，維持0%"
+        entry_low=close
+        entry_high=levels["reclaim_level"] if levels["reclaim_level"] is not None else levels["resistance"]
+        entry_note="趨勢尚未確認，價位僅供觀察，不代表建議買進"
+
     return {
         "data_date":str(df.index[-1].date()),
-        "strategy":s.name,"stage":stage,"action":action,
+        "strategy":s.name,
+        "stage":stage,
+        "action":action,
         "suggested_position_pct":position,
         "bottom_progress_pct":progress,
         "progress_reasons":reasons,
-        "reference_close":float(last["close"]),
-        "entry_range_low":float(last["bb_low"]),
-        "entry_range_high":float(last["ma20"]),
-        "support":float(last["bb_low"]),
-        "resistance":float(last["bb_up"]),
+        "reference_close":close,
+        "entry_range_low":float(entry_low),
+        "entry_range_high":float(max(entry_low, entry_high)),
+        "entry_note":entry_note,
+        "support":float(levels["support"]),
+        "support_label":levels["support_label"],
+        "resistance":float(levels["resistance"]),
+        "resistance_label":levels["resistance_label"],
+        "reclaim_level":None if levels["reclaim_level"] is None else float(levels["reclaim_level"]),
+        "reclaim_label":levels["reclaim_label"],
         "week_k":float(last["week_k"]),
-        "daily_k":float(last["k"]),"daily_d":float(last["d"]),
-        "macd_improving":macd_up,"above_ma20":above_ma20,
+        "daily_k":float(last["k"]),
+        "daily_d":float(last["d"]),
+        "macd_improving":macd_up,
+        "above_ma20":above_ma20,
         "manual_inputs":manual,
+        "backtest_confidence":confidence,
         "out_of_sample":{
             "trades":int(best["trades_test"]),
             "win_rate":float(best["win_rate_test"]),
@@ -291,18 +410,29 @@ def save_outputs(df, board, trades, decision, cfg: Config):
         old=old[old["date"]!=decision["data_date"]]
         row=pd.concat([old,row],ignore_index=True)
     row.to_csv(track_path,index=False)
+    reclaim_text = (
+        f"<p>待收復：{decision['reclaim_label']} {decision['reclaim_level']:.2f}</p>"
+        if decision.get("reclaim_level") is not None else ""
+    )
+    confidence = decision["backtest_confidence"]
     html=f"""<!doctype html><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-    <div style="max-width:560px;margin:20px auto;padding:20px;border-radius:18px;box-shadow:0 4px 18px #bbb;font-family:-apple-system">
+    <div style="max-width:560px;margin:20px auto;padding:20px;border-radius:18px;box-shadow:0 4px 18px #bbb;font-family:-apple-system;line-height:1.55">
     <h2>00631L 每日決策</h2><p>資料截止：{decision['data_date']}</p>
     <h1>{decision['action']}</h1>
     <p>落底進度：<b>{decision['bottom_progress_pct']}%</b></p>
     <p>階段：{decision['stage']}｜建議持股：{decision['suggested_position_pct']}%</p>
     <p>參考收盤：{decision['reference_close']:.2f}</p>
-    <p>進場區間：{decision['entry_range_low']:.2f}～{decision['entry_range_high']:.2f}</p>
-    <p>支撐：{decision['support']:.2f}｜壓力：{decision['resistance']:.2f}</p>
+    <p>觀察／進場價位：{decision['entry_range_low']:.2f}～{decision['entry_range_high']:.2f}</p>
+    <p style='font-size:14px;color:#555'>{decision['entry_note']}</p>
+    <p>下方支撐：{decision['support_label']} {decision['support']:.2f}</p>
+    <p>上方壓力：{decision['resistance_label']} {decision['resistance']:.2f}</p>
+    {reclaim_text}
     <p>周KD：{decision['week_k']:.1f}｜日K/D：{decision['daily_k']:.1f}/{decision['daily_d']:.1f}</p>
-    <p>樣本外勝率：{decision['out_of_sample']['win_rate']:.1%}｜PF：{decision['out_of_sample']['profit_factor']:.2f}</p>
-    <p style='color:#777'>歷史回測不保證未來績效。</p></div>"""
+    <hr>
+    <p>樣本外交易：{decision['out_of_sample']['trades']}筆｜勝率：{decision['out_of_sample']['win_rate']:.1%}｜PF：{decision['out_of_sample']['profit_factor']:.2f}</p>
+    <p>回測可信度：<b>{confidence['level']}</b>（{confidence['score']}/100）</p>
+    <p style='font-size:14px;color:#9a5a00'>{confidence['note']}</p>
+    <p style='color:#777'>歷史回測不保證未來績效；支撐與壓力會隨每日行情變動。</p></div>"""
     (out/"dashboard.html").write_text(html,encoding="utf-8")
 
 def run():
