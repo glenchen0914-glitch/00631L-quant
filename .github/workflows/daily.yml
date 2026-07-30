@@ -30,6 +30,9 @@ jobs:
       - name: Final scenario tests
         run: python tests/test_final.py
 
+      - name: Full optimizer test
+        run: python tests/test_optimize_full.py
+
       - name: Run pipeline
         run: python run_pipeline.py
 

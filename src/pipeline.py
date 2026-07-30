@@ -551,29 +551,77 @@ def optimize(df: pd.DataFrame, cfg: Config):
     split=int(len(df)*cfg.train_ratio)
     train,test=df.iloc[:split],df.iloc[split:]
     rows=[]; trade_map={}
+
+    # 第一階段：快速測試全部策略，不在迴圈內做昂貴的 Walk-forward。
     for s in make_strategies():
-        mt,_=backtest(train,s,cfg); ms,tr=backtest(test,s,cfg)
-        if mt is None or ms is None: continue
-        if mt["trades"]+ms["trades"]<cfg.min_total_trades or ms["trades"]<3: continue
-        if not np.isfinite(mt["profit_factor"]) or not np.isfinite(ms["profit_factor"]): continue
+        mt,_=backtest(train,s,cfg)
+        ms,tr=backtest(test,s,cfg)
+        if mt is None or ms is None:
+            continue
+        if mt["trades"]+ms["trades"] < cfg.min_total_trades:
+            continue
+        if ms["trades"] < cfg.min_test_trades:
+            continue
+        if not np.isfinite(mt["profit_factor"]) or not np.isfinite(ms["profit_factor"]):
+            continue
+
         row=asdict(s)
-        for k,v in mt.items(): row[f"{k}_train"]=v
-        for k,v in ms.items(): row[f"{k}_test"]=v
-        row["score"]=(2.2*min(mt["profit_factor"],ms["profit_factor"])
-                      +1.5*min(ms["profit_factor"],4)
-                      +2*ms["cagr"]+2*ms["max_drawdown"]
-                      +0.02*min(ms["trades"],30))
-        row["description"] = strategy_description(pd.Series(row))
-        wf = walk_forward_strategy_metrics(x, s, cfg)
-        row["wf_windows"] = wf["windows"]
-        row["wf_positive_windows"] = wf["positive_windows"]
-        row["wf_median_pf"] = wf["median_pf"]
-        row["wf_median_return"] = wf["median_return"]
-        rows.append(row); trade_map[s.name]=tr
+        for k,v in mt.items():
+            row[f"{k}_train"]=v
+        for k,v in ms.items():
+            row[f"{k}_test"]=v
+
+        row["score"]=(
+            2.2*min(mt["profit_factor"],ms["profit_factor"])
+            +1.5*min(ms["profit_factor"],4)
+            +2*ms["cagr"]
+            +2*ms["max_drawdown"]
+            +0.02*min(ms["trades"],30)
+        )
+        row["description"]=strategy_description(pd.Series(row))
+        rows.append(row)
+        trade_map[s.name]=tr
+
     board=pd.DataFrame(rows)
-    if board.empty: raise RuntimeError("沒有策略通過最低樣本門檻")
-    board=board.sort_values(["score","profit_factor_test","max_drawdown_test"],
-                            ascending=[False,False,False]).head(cfg.top_n)
+    if board.empty:
+        raise RuntimeError("沒有策略通過最低樣本門檻")
+
+    # 第二階段：先選出較佳候選，再做 Walk-forward，避免執行時間爆增。
+    candidate_n=max(cfg.top_n*3, 60)
+    board=board.sort_values(
+        ["score","profit_factor_test","max_drawdown_test"],
+        ascending=[False,False,False]
+    ).head(candidate_n).copy()
+
+    wf_rows=[]
+    for _, row in board.iterrows():
+        s=Strategy(
+            row["name"],int(row["week_k_max"]),int(row["rsi_max"]),
+            bool(row["require_k_cross"]),bool(row["require_macd_improve"]),
+            bool(row["require_close_ma20"]),bool(row["require_twii_ma20"]),
+            float(row["stop_loss"]),float(row["take_profit"]),int(row["max_hold"])
+        )
+        wf=walk_forward_strategy_metrics(df,s,cfg)
+        r=row.to_dict()
+        r["wf_windows"]=wf["windows"]
+        r["wf_positive_windows"]=wf["positive_windows"]
+        r["wf_median_pf"]=wf["median_pf"]
+        r["wf_median_return"]=wf["median_return"]
+
+        # Walk-forward 穩定性只作小幅調整，避免單一短期區間主導排名。
+        stability_bonus=0.0
+        if wf["windows"] > 0:
+            stability_bonus += 0.25 * (wf["positive_windows"]/wf["windows"])
+        if wf["median_pf"] is not None:
+            stability_bonus += 0.15 * min(wf["median_pf"],2.0)
+        r["final_score"]=float(r["score"])+stability_bonus
+        wf_rows.append(r)
+
+    board=pd.DataFrame(wf_rows).sort_values(
+        ["final_score","profit_factor_test","max_drawdown_test"],
+        ascending=[False,False,False]
+    ).head(cfg.top_n)
+
     return board,{k:trade_map[k] for k in board["name"]}
 
 def read_manual_today(path: str) -> dict:
