@@ -1,0 +1,237 @@
+{
+  "version": "V6.0 Final",
+  "data_date": "2026-07-30",
+  "strategy": "S05910",
+  "stage": "觀察",
+  "action": "不進場，維持0%",
+  "suggested_position_pct": 0,
+  "bottom_progress_pct": 28,
+  "bottom_breakdown": {
+    "周KD": 10,
+    "RSI": 70,
+    "日KD": 20,
+    "MACD": 20,
+    "均線": 20,
+    "波動": 70,
+    "融資": null,
+    "市場環境": 13
+  },
+  "data_status": {
+    "融資": "資料未提供"
+  },
+  "reference_close": 28.3799991607666,
+  "entry_plan": {
+    "first": 27.702246677431297,
+    "second": 26.637207060761536,
+    "third": 25.572167444091775,
+    "stop": 24.89441496075647,
+    "first_note": "僅觀察，尚未觸發買進",
+    "resistance": 30.910000228881835,
+    "min_gap": 0.9682178333361466
+  },
+  "support": 27.3700008392334,
+  "support_label": "10日低點",
+  "resistance": 30.910000228881835,
+  "resistance_label": "MA5",
+  "reclaim_level": 28.564593397472173,
+  "reclaim_label": "布林下緣",
+  "week_k": 42.25571462689302,
+  "daily_k": 17.973567096688857,
+  "daily_d": 24.795733528886963,
+  "macd_improving": false,
+  "above_ma20": false,
+  "market_regime": {
+    "score": 13,
+    "label": "偏空",
+    "parts": {
+      "台股趨勢": 2,
+      "NASDAQ": 2,
+      "SOX": 2,
+      "S&P500": 1,
+      "台積電ADR": 2,
+      "VIX": 0,
+      "美元": 2,
+      "美債殖利率": 2
+    },
+    "max_score": 100
+  },
+  "ml_signal": {
+    "probability": 0.4738286022942365,
+    "auc": 0.5917492394571688,
+    "confidence": "偏低",
+    "note": "機器學習只作為輔助，不單獨決定交易"
+  },
+  "model_consensus": {
+    "probability": 0.4251387191809861,
+    "consensus": 0.0,
+    "models": [
+      {
+        "name": "Logistic",
+        "probability": 0.37644883606773566,
+        "auc": 0.5938807398317593
+      },
+      {
+        "name": "RandomForest",
+        "probability": 0.4738286022942365,
+        "auc": 0.5917492394571688
+      }
+    ],
+    "auc": 0.5928149896444641,
+    "confidence": "偏低",
+    "note": "多模型只作為輔助，不單獨決定交易"
+  },
+  "ensemble_signal": {
+    "vote_ratio": 0.0,
+    "members": [
+      {
+        "name": "S05910",
+        "signal": false,
+        "score": 15.349117793214054
+      },
+      {
+        "name": "S05911",
+        "signal": false,
+        "score": 15.045626551471104
+      },
+      {
+        "name": "S05912",
+        "signal": false,
+        "score": 14.446769519649225
+      },
+      {
+        "name": "S05909",
+        "signal": false,
+        "score": 13.19983314221821
+      },
+      {
+        "name": "S05922",
+        "signal": false,
+        "score": 12.852561575549917
+      }
+    ]
+  },
+  "manual_inputs": {
+    "foreign_futures_net_oi": null,
+    "margin_change": null,
+    "margin_maintenance_ratio": null,
+    "tx_night_change_pct": null,
+    "event_risk_score": null,
+    "event_note": ""
+  },
+  "backtest_confidence": {
+    "level": "低",
+    "score": 10,
+    "note": "樣本外交易不足10筆，PF容易被少數交易放大；PF高於4，須特別防範過度擬合；樣本內外PF差異偏大",
+    "trades": 5
+  },
+  "data_quality": {
+    "score": 100,
+    "rows": [
+      {
+        "name": "etf",
+        "symbol": "00631L.TW",
+        "status": "正常",
+        "latest_date": "2026-07-30",
+        "delay_days": 0,
+        "rows": 2863,
+        "missing_close": 0
+      },
+      {
+        "name": "twii",
+        "symbol": "^TWII",
+        "status": "正常",
+        "latest_date": "2026-07-30",
+        "delay_days": 0,
+        "rows": 2854,
+        "missing_close": 0
+      },
+      {
+        "name": "nasdaq",
+        "symbol": "^IXIC",
+        "status": "正常",
+        "latest_date": "2026-07-29",
+        "delay_days": 1,
+        "rows": 2951,
+        "missing_close": 0
+      },
+      {
+        "name": "sox",
+        "symbol": "^SOX",
+        "status": "正常",
+        "latest_date": "2026-07-29",
+        "delay_days": 1,
+        "rows": 2951,
+        "missing_close": 0
+      },
+      {
+        "name": "sp500",
+        "symbol": "^GSPC",
+        "status": "正常",
+        "latest_date": "2026-07-29",
+        "delay_days": 1,
+        "rows": 2951,
+        "missing_close": 0
+      },
+      {
+        "name": "vix",
+        "symbol": "^VIX",
+        "status": "正常",
+        "latest_date": "2026-07-29",
+        "delay_days": 1,
+        "rows": 2952,
+        "missing_close": 0
+      },
+      {
+        "name": "dxy",
+        "symbol": "DX-Y.NYB",
+        "status": "正常",
+        "latest_date": "2026-07-30",
+        "delay_days": 0,
+        "rows": 2953,
+        "missing_close": 0
+      },
+      {
+        "name": "us10y",
+        "symbol": "^TNX",
+        "status": "正常",
+        "latest_date": "2026-07-29",
+        "delay_days": 1,
+        "rows": 2950,
+        "missing_close": 0
+      },
+      {
+        "name": "tsm_adr",
+        "symbol": "TSM",
+        "status": "正常",
+        "latest_date": "2026-07-29",
+        "delay_days": 1,
+        "rows": 2951,
+        "missing_close": 0
+      }
+    ]
+  },
+  "out_of_sample": {
+    "trades": 5,
+    "win_rate": 0.8,
+    "profit_factor": 8.842854684595617,
+    "avg_return": 0.08281740832745592,
+    "max_drawdown": -0.05279800000000001,
+    "cagr": 0.2538050405183807
+  },
+  "decision_explanation": {
+    "positive": [],
+    "negative": [
+      "落底進度仍不足",
+      "市場環境為偏空",
+      "Top 5策略尚未形成多數",
+      "模型共識未達偏多門檻"
+    ],
+    "missing": [
+      "融資資料未提供"
+    ]
+  },
+  "confidence_grade": {
+    "score": 26,
+    "grade": "D"
+  }
+}
