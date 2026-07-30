@@ -1,14 +1,14 @@
 {
   "version": "V17 Dual Short-Term Final",
   "data_date": "2026-07-30",
-  "strategy": "S05910",
-  "stage": "觀察",
-  "action": "不進場，維持0%",
+  "strategy": "00981A_TECH",
+  "stage": "資料觀察",
+  "action": "歷史資料不足，暫不進場",
   "suggested_position_pct": 0,
-  "bottom_progress_pct": 30,
+  "bottom_progress_pct": 33,
   "bottom_breakdown": {
     "周KD": 10,
-    "RSI": 70,
+    "RSI": 100,
     "日KD": 20,
     "MACD": 20,
     "均線": 20,
@@ -19,25 +19,25 @@
   "data_status": {
     "融資": "資料未提供"
   },
-  "reference_close": 28.3799991607666,
+  "reference_close": 23.760000228881836,
   "entry_plan": {
-    "first": 27.702246677431297,
-    "second": 26.637207060761536,
-    "third": 25.572167444091775,
-    "stop": 24.89441496075647,
+    "first": 23.283797403131917,
+    "second": 22.535478676953478,
+    "third": 21.787159950775035,
+    "stop": 21.310957125025116,
     "first_note": "僅觀察，尚未觸發買進",
-    "resistance": 30.910000228881835,
-    "min_gap": 0.9682178333361466
+    "resistance": 25.626000595092773,
+    "min_gap": 0.6802897510713105
   },
-  "support": 27.3700008392334,
-  "support_label": "10日低點",
-  "resistance": 30.910000228881835,
+  "support": 23.722595382655697,
+  "support_label": "布林下緣",
+  "resistance": 25.626000595092773,
   "resistance_label": "MA5",
-  "reclaim_level": 28.564593397472173,
-  "reclaim_label": "布林下緣",
-  "week_k": 42.25571462689302,
-  "daily_k": 17.973567096688857,
-  "daily_d": 24.795733528886963,
+  "reclaim_level": 25.626000595092773,
+  "reclaim_label": "MA5",
+  "week_k": 41.15843555929963,
+  "daily_k": 21.354998400242483,
+  "daily_d": 31.291846829794817,
   "macd_improving": false,
   "above_ma20": false,
   "market_regime": {
@@ -56,57 +56,25 @@
     "max_score": 100
   },
   "ml_signal": {
-    "probability": 0.5415400911438131,
-    "auc": 0.591595700966591,
-    "confidence": "偏低",
-    "note": "機器學習只作為輔助，不單獨決定交易"
+    "probability": null,
+    "auc": null,
+    "confidence": "不足",
+    "note": "可用資料不足500筆"
   },
   "model_consensus": {
-    "probability": 0.512924809855631,
-    "consensus": 0.0,
-    "models": [
-      {
-        "name": "Logistic",
-        "probability": 0.484309528567449,
-        "auc": 0.5937828445796791
-      },
-      {
-        "name": "RandomForest",
-        "probability": 0.5415400911438131,
-        "auc": 0.591595700966591
-      }
-    ],
-    "auc": 0.592689272773135,
-    "confidence": "偏低",
-    "note": "多模型只作為輔助，不單獨決定交易"
+    "probability": null,
+    "consensus": null,
+    "models": [],
+    "confidence": "不足",
+    "note": "可用資料不足500筆"
   },
   "ensemble_signal": {
     "vote_ratio": 0.0,
     "members": [
       {
-        "name": "S05910",
+        "name": "00981A_TECH",
         "signal": false,
-        "score": 15.349117793214054
-      },
-      {
-        "name": "S05911",
-        "signal": false,
-        "score": 15.045626551471104
-      },
-      {
-        "name": "S05912",
-        "signal": false,
-        "score": 14.446769519649225
-      },
-      {
-        "name": "S05909",
-        "signal": false,
-        "score": 13.19983314221821
-      },
-      {
-        "name": "S05922",
-        "signal": false,
-        "score": 12.852561575549917
+        "score": 0.0
       }
     ]
   },
@@ -119,21 +87,21 @@
     "event_note": ""
   },
   "backtest_confidence": {
-    "level": "低",
-    "score": 10,
-    "note": "樣本外交易不足10筆，PF容易被少數交易放大；PF高於4，須特別防範過度擬合；樣本內外PF差異偏大",
-    "trades": 5
+    "level": "很低",
+    "score": 15,
+    "note": "樣本外交易少於5筆，只能視為初步線索；00981A上市歷史較短，決策以短線技術與市場環境為主",
+    "trades": 0
   },
   "data_quality": {
     "score": 100,
     "rows": [
       {
         "name": "etf",
-        "symbol": "00631L.TW",
+        "symbol": "00981A.TW",
         "status": "正常",
         "latest_date": "2026-07-30",
         "delay_days": 0,
-        "rows": 2863,
+        "rows": 296,
         "missing_close": 0
       },
       {
@@ -142,7 +110,7 @@
         "status": "正常",
         "latest_date": "2026-07-30",
         "delay_days": 0,
-        "rows": 2854,
+        "rows": 305,
         "missing_close": 0
       },
       {
@@ -151,7 +119,7 @@
         "status": "正常",
         "latest_date": "2026-07-29",
         "delay_days": 1,
-        "rows": 2951,
+        "rows": 312,
         "missing_close": 0
       },
       {
@@ -160,7 +128,7 @@
         "status": "正常",
         "latest_date": "2026-07-29",
         "delay_days": 1,
-        "rows": 2951,
+        "rows": 312,
         "missing_close": 0
       },
       {
@@ -169,7 +137,7 @@
         "status": "正常",
         "latest_date": "2026-07-29",
         "delay_days": 1,
-        "rows": 2951,
+        "rows": 312,
         "missing_close": 0
       },
       {
@@ -178,7 +146,7 @@
         "status": "正常",
         "latest_date": "2026-07-30",
         "delay_days": 0,
-        "rows": 2953,
+        "rows": 314,
         "missing_close": 0
       },
       {
@@ -187,7 +155,7 @@
         "status": "正常",
         "latest_date": "2026-07-30",
         "delay_days": 0,
-        "rows": 2953,
+        "rows": 314,
         "missing_close": 0
       },
       {
@@ -196,7 +164,7 @@
         "status": "正常",
         "latest_date": "2026-07-29",
         "delay_days": 1,
-        "rows": 2950,
+        "rows": 312,
         "missing_close": 0
       },
       {
@@ -205,40 +173,51 @@
         "status": "正常",
         "latest_date": "2026-07-29",
         "delay_days": 1,
-        "rows": 2951,
+        "rows": 312,
         "missing_close": 0
       }
     ]
   },
   "out_of_sample": {
-    "trades": 5,
-    "win_rate": 0.8,
-    "profit_factor": 8.842854684595617,
-    "avg_return": 0.08281740832745592,
-    "max_drawdown": -0.05279800000000001,
-    "cagr": 0.2538050405183807
+    "trades": 0,
+    "win_rate": 0.0,
+    "profit_factor": 0.0,
+    "avg_return": 0.0,
+    "max_drawdown": 0.0,
+    "cagr": 0.0
   },
   "decision_explanation": {
-    "positive": [],
+    "positive": [
+      "成交量高於20日均量"
+    ],
     "negative": [
       "落底進度仍不足",
       "市場環境為偏空",
       "Top 5策略尚未形成多數",
-      "模型共識未達偏多門檻"
+      "價格仍在20日均線下方",
+      "MACD尚未改善"
     ],
     "missing": [
-      "融資資料未提供"
+      "模型資料不足",
+      "融資資料未提供",
+      "上市歷史較短，模型與回測可信度受限"
     ]
   },
   "confidence_grade": {
-    "score": 33,
+    "score": 30,
     "grade": "D"
   },
-  "asset_code": "00631L",
-  "asset_name": "元大台灣50正2",
+  "asset_code": "00981A",
+  "asset_name": "主動統一台股增長",
   "analysis_type": "短線操作",
-  "progress_label": "落底進度",
-  "history_rows": 2624,
-  "history_status": "充足",
-  "fallback_strategy": false
+  "progress_label": "短線轉強進度",
+  "history_rows": 57,
+  "history_status": "不足",
+  "short_term_factors": {
+    "above_ma20": false,
+    "macd_improving": false,
+    "volume_ratio_20d": 1.9735691497838683,
+    "relative_strength_20d": null
+  },
+  "fallback_strategy": true
 }
