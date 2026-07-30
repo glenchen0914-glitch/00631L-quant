@@ -5,7 +5,7 @@
   "stage": "資料觀察",
   "action": "歷史資料不足，暫不進場",
   "suggested_position_pct": 0,
-  "bottom_progress_pct": 33,
+  "bottom_progress_pct": 34,
   "bottom_breakdown": {
     "周KD": 10,
     "RSI": 100,
@@ -14,7 +14,7 @@
     "均線": 20,
     "波動": 70,
     "融資": null,
-    "市場環境": 23
+    "市場環境": 26
   },
   "data_status": {
     "融資": "資料未提供"
@@ -41,7 +41,7 @@
   "macd_improving": false,
   "above_ma20": false,
   "market_regime": {
-    "score": 23,
+    "score": 26,
     "label": "偏空",
     "parts": {
       "台股趨勢": 2,
@@ -50,7 +50,7 @@
       "S&P500": 1,
       "台積電ADR": 2,
       "VIX": 10,
-      "美元": 2,
+      "美元": 5,
       "美債殖利率": 2
     },
     "max_score": 100

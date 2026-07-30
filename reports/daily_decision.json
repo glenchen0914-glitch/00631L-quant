@@ -14,7 +14,7 @@
     "均線": 20,
     "波動": 70,
     "融資": null,
-    "市場環境": 23
+    "市場環境": 26
   },
   "data_status": {
     "融資": "資料未提供"
@@ -41,7 +41,7 @@
   "macd_improving": false,
   "above_ma20": false,
   "market_regime": {
-    "score": 23,
+    "score": 26,
     "label": "偏空",
     "parts": {
       "台股趨勢": 2,
@@ -50,33 +50,33 @@
       "S&P500": 1,
       "台積電ADR": 2,
       "VIX": 10,
-      "美元": 2,
+      "美元": 5,
       "美債殖利率": 2
     },
     "max_score": 100
   },
   "ml_signal": {
-    "probability": 0.5415400911438131,
-    "auc": 0.591595700966591,
+    "probability": 0.5607088838718541,
+    "auc": 0.5916300626285494,
     "confidence": "偏低",
     "note": "機器學習只作為輔助，不單獨決定交易"
   },
   "model_consensus": {
-    "probability": 0.512924809855631,
-    "consensus": 0.0,
+    "probability": 0.5444074784387798,
+    "consensus": 0.5,
     "models": [
       {
         "name": "Logistic",
-        "probability": 0.484309528567449,
-        "auc": 0.5937828445796791
+        "probability": 0.5281060730057053,
+        "auc": 0.5937661370454498
       },
       {
         "name": "RandomForest",
-        "probability": 0.5415400911438131,
-        "auc": 0.591595700966591
+        "probability": 0.5607088838718541,
+        "auc": 0.5916300626285494
       }
     ],
-    "auc": 0.592689272773135,
+    "auc": 0.5926980998369996,
     "confidence": "偏低",
     "note": "多模型只作為輔助，不單獨決定交易"
   },
@@ -231,7 +231,7 @@
     ]
   },
   "confidence_grade": {
-    "score": 33,
+    "score": 36,
     "grade": "D"
   },
   "asset_code": "00631L",
