@@ -1,0 +1,22 @@
+{
+  "00631L": {
+    "date": "2026-07-30",
+    "action": "不進場，維持0%",
+    "position_pct": 0,
+    "confidence": {
+      "score": 36,
+      "grade": "D"
+    },
+    "reference_close": 28.3799991607666
+  },
+  "00981A": {
+    "date": "2026-07-30",
+    "action": "歷史資料不足，暫不進場",
+    "position_pct": 0,
+    "confidence": {
+      "score": 30,
+      "grade": "D"
+    },
+    "reference_close": 23.760000228881836
+  }
+}
