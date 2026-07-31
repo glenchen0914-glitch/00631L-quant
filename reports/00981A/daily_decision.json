@@ -1,56 +1,56 @@
 {
   "version": "V17 Dual Short-Term Final",
-  "data_date": "2026-07-30",
+  "data_date": "2026-07-31",
   "strategy": "00981A_TECH",
   "stage": "資料觀察",
   "action": "歷史資料不足，暫不進場",
   "suggested_position_pct": 0,
-  "bottom_progress_pct": 34,
+  "bottom_progress_pct": 42,
   "bottom_breakdown": {
-    "周KD": 10,
-    "RSI": 100,
+    "周KD": 40,
+    "RSI": 30,
     "日KD": 20,
-    "MACD": 20,
+    "MACD": 80,
     "均線": 20,
     "波動": 70,
     "融資": null,
-    "市場環境": 26
+    "市場環境": 46
   },
   "data_status": {
     "融資": "資料未提供"
   },
-  "reference_close": 23.760000228881836,
+  "reference_close": 26.1299991607666,
   "entry_plan": {
-    "first": 23.283797403131917,
-    "second": 22.535478676953478,
-    "third": 21.787159950775035,
-    "stop": 21.310957125025116,
+    "first": 25.628560849273132,
+    "second": 24.84058635978339,
+    "third": 24.05261187029365,
+    "stop": 23.05673267394132,
     "first_note": "僅觀察，尚未觸發買進",
-    "resistance": 25.626000595092773,
-    "min_gap": 0.6802897510713105
+    "resistance": 26.507000160217284,
+    "min_gap": 0.7163404449906728
   },
-  "support": 23.722595382655697,
-  "support_label": "布林下緣",
-  "resistance": 25.626000595092773,
-  "resistance_label": "MA5",
-  "reclaim_level": 25.626000595092773,
-  "reclaim_label": "MA5",
-  "week_k": 41.15843555929963,
-  "daily_k": 21.354998400242483,
-  "daily_d": 31.291846829794817,
-  "macd_improving": false,
+  "support": 25.344000244140624,
+  "support_label": "MA5",
+  "resistance": 26.507000160217284,
+  "resistance_label": "MA10",
+  "reclaim_level": 26.507000160217284,
+  "reclaim_label": "MA10",
+  "week_k": 37.94074427320328,
+  "daily_k": 30.734404114051415,
+  "daily_d": 31.106032591213683,
+  "macd_improving": true,
   "above_ma20": false,
   "market_regime": {
-    "score": 26,
-    "label": "偏空",
+    "score": 46,
+    "label": "中性",
     "parts": {
-      "台股趨勢": 2,
-      "NASDAQ": 2,
-      "SOX": 2,
-      "S&P500": 1,
-      "台積電ADR": 2,
+      "台股趨勢": 8,
+      "NASDAQ": 6,
+      "SOX": 8,
+      "S&P500": 4,
+      "台積電ADR": 6,
       "VIX": 10,
-      "美元": 5,
+      "美元": 2,
       "美債殖利率": 2
     },
     "max_score": 100
@@ -69,11 +69,11 @@
     "note": "可用資料不足500筆"
   },
   "ensemble_signal": {
-    "vote_ratio": 0.0,
+    "vote_ratio": 1.0,
     "members": [
       {
         "name": "00981A_TECH",
-        "signal": false,
+        "signal": true,
         "score": 0.0
       }
     ]
@@ -99,45 +99,45 @@
         "name": "etf",
         "symbol": "00981A.TW",
         "status": "正常",
-        "latest_date": "2026-07-30",
+        "latest_date": "2026-07-31",
         "delay_days": 0,
-        "rows": 296,
+        "rows": 297,
         "missing_close": 0
       },
       {
         "name": "twii",
         "symbol": "^TWII",
         "status": "正常",
-        "latest_date": "2026-07-30",
+        "latest_date": "2026-07-31",
         "delay_days": 0,
-        "rows": 305,
+        "rows": 306,
         "missing_close": 0
       },
       {
         "name": "nasdaq",
         "symbol": "^IXIC",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 312,
+        "rows": 313,
         "missing_close": 0
       },
       {
         "name": "sox",
         "symbol": "^SOX",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 312,
+        "rows": 313,
         "missing_close": 0
       },
       {
         "name": "sp500",
         "symbol": "^GSPC",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 312,
+        "rows": 313,
         "missing_close": 0
       },
       {
@@ -145,7 +145,7 @@
         "symbol": "^VIX",
         "status": "正常",
         "latest_date": "2026-07-30",
-        "delay_days": 0,
+        "delay_days": 1,
         "rows": 314,
         "missing_close": 0
       },
@@ -153,27 +153,27 @@
         "name": "dxy",
         "symbol": "DX-Y.NYB",
         "status": "正常",
-        "latest_date": "2026-07-30",
+        "latest_date": "2026-07-31",
         "delay_days": 0,
-        "rows": 314,
+        "rows": 315,
         "missing_close": 0
       },
       {
         "name": "us10y",
         "symbol": "^TNX",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 312,
+        "rows": 313,
         "missing_close": 0
       },
       {
         "name": "tsm_adr",
         "symbol": "TSM",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 312,
+        "rows": 313,
         "missing_close": 0
       }
     ]
@@ -188,14 +188,14 @@
   },
   "decision_explanation": {
     "positive": [
+      "Top 5策略多數支持",
+      "MACD柱體改善",
       "成交量高於20日均量"
     ],
     "negative": [
       "落底進度仍不足",
-      "市場環境為偏空",
-      "Top 5策略尚未形成多數",
-      "價格仍在20日均線下方",
-      "MACD尚未改善"
+      "市場環境為中性",
+      "價格仍在20日均線下方"
     ],
     "missing": [
       "模型資料不足",
@@ -204,19 +204,19 @@
     ]
   },
   "confidence_grade": {
-    "score": 30,
-    "grade": "D"
+    "score": 49,
+    "grade": "C"
   },
   "asset_code": "00981A",
   "asset_name": "主動統一台股增長",
   "analysis_type": "短線操作",
   "progress_label": "短線轉強進度",
-  "history_rows": 57,
+  "history_rows": 58,
   "history_status": "不足",
   "short_term_factors": {
     "above_ma20": false,
-    "macd_improving": false,
-    "volume_ratio_20d": 1.9735691497838683,
+    "macd_improving": true,
+    "volume_ratio_20d": 3.0795940006349563,
     "relative_strength_20d": null
   },
   "fallback_strategy": true
