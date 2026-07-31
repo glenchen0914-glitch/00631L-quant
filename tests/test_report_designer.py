@@ -17,9 +17,10 @@ def sample_report():
 
 def test_message_contains_actionable_sections():
     text = build_falcon_message(sample_report(), session="premarket")
-    for key in ["操作結論", "交易成熟度", "第一買點", "防守線", "今天不能犯的錯", "AI一句話"]:
+    for key in ["操作結論", "交易成熟度", "條件式觀察價位", "第一買點", "防守線", "今天不能犯的錯", "AI一句話"]:
         assert key in text
     assert "歷史勝率" not in text or "不顯示虛構歷史勝率" in text
+    assert "到價不等於直接買進" in text
 
 
 def test_message_respects_gate_block():

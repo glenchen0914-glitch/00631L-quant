@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Any
 
 
@@ -113,7 +114,7 @@ def build_falcon_message(report: dict[str, Any], *, session: str) -> str:
     current = _f(report.get("reference_close"))
     distance = ((current / levels["first"] - 1) * 100) if levels["first"] else 0
     title = "07:00盤前" if session == "premarket" else "14:35收盤"
-    actual_time = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")
+    actual_time = datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y-%m-%d %H:%M")
 
     lines = [
         f"{asset} Falcon {title}",
@@ -130,12 +131,13 @@ def build_falcon_message(report: dict[str, Any], *, session: str) -> str:
 
     lines += [
         "",
-        "【可執行價位】",
+        "【條件式觀察價位】",
         f"參考價：{current:.2f}",
         f"第一買點：{levels['first']:.2f}（目前高於買點約{distance:.1f}%）",
         f"第二買點：{levels['second']:.2f}",
         f"第三買點：{levels['third']:.2f}",
         f"防守線：{levels['stop']:.2f}｜首段停利：{levels['tp1']:.2f}",
+        "到價不等於直接買進，仍須等待止跌、量價或動能確認。",
         "",
         "【今日執行規則】",
         f"• {execution.get('chase_rule', '依買點分批，不追價')}",
