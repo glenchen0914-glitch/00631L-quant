@@ -5,6 +5,8 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
+from src.report_designer import build_falcon_message
+
 LINE_API = "https://api.line.me/v2/bot/message/push"
 
 def _load_decision(path: str = "reports/daily_decision.json") -> dict:
@@ -83,17 +85,26 @@ def main() -> None:
         print("⚠️", msg)
         return
 
-    paths = [
-        Path("reports/daily_decision.json"),
-        Path("reports/00981A/daily_decision.json"),
+    falcon_paths = [
+        Path("reports/falcon_decision.json"),
+        Path("reports/00981A/falcon_decision.json"),
     ]
-    decisions = []
-    for path in paths:
-        if not path.exists():
-            raise FileNotFoundError(f"找不到決策檔：{path}")
-        decisions.append(json.loads(path.read_text(encoding="utf-8")))
+    if all(path.exists() for path in falcon_paths):
+        reports = [json.loads(path.read_text(encoding="utf-8")) for path in falcon_paths]
+        texts = [build_falcon_message(r, session="close") for r in reports]
+    else:
+        # 相容舊版：Falcon報告尚未生成時才使用舊決策檔。
+        legacy_paths = [
+            Path("reports/daily_decision.json"),
+            Path("reports/00981A/daily_decision.json"),
+        ]
+        decisions = []
+        for path in legacy_paths:
+            if not path.exists():
+                raise FileNotFoundError(f"找不到決策檔：{path}")
+            decisions.append(json.loads(path.read_text(encoding="utf-8")))
+        texts = [build_line_message(d) for d in decisions]
 
-    texts = [build_line_message(d) for d in decisions]
     push_line_messages(texts, token, user_id)
     print(f"✅ LINE 雙標的推播完成，共 {len(texts)} 則")
 

@@ -11,6 +11,7 @@ from src.assets import ASSETS
 from src.falcon_engine import evaluate, save_report
 from src.falcon_data import ensure_features
 from src.morning import collect_overnight, score_market
+from src.report_designer import build_falcon_message
 
 
 def _safe_float(value: Any) -> float | None:
@@ -40,7 +41,7 @@ def _vix(raw: dict[str, Any]) -> tuple[float | None, float | None]:
     return _safe_float(item.get("close")), _safe_float(item.get("change_pct"))
 
 
-def build_line_message(asset: str, report: dict[str, Any]) -> str:
+def build_legacy_line_message(asset: str, report: dict[str, Any]) -> str:
     gate = report["gate"]
     score = report["scores"]
     risk = report["risk"]
@@ -83,7 +84,8 @@ def run_falcon_morning() -> dict[str, Any]:
             "overnight_raw": raw,
             "gap_status": "待09:00取得實際開盤價後判定",
         })
-        report["line_message"] = build_line_message(asset, report)
+        report["reference_close"] = float(df["close"].iloc[-1])
+        report["line_message"] = build_falcon_message(report, session="premarket")
         output[asset] = report
 
         # 統一寫入 morning 目錄，與 GitHub Actions 驗收路徑一致。
