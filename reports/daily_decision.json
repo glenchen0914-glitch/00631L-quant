@@ -56,27 +56,27 @@
     "max_score": 100
   },
   "ml_signal": {
-    "probability": 0.5987195958130793,
-    "auc": 0.5926537264936029,
+    "probability": 0.5989697431752955,
+    "auc": 0.5924233113576559,
     "confidence": "偏低",
     "note": "機器學習只作為輔助，不單獨決定交易"
   },
   "model_consensus": {
-    "probability": 0.5966485308735598,
+    "probability": 0.5972086364650135,
     "consensus": 1.0,
     "models": [
       {
         "name": "Logistic",
-        "probability": 0.5945774659340404,
+        "probability": 0.5954475297547315,
         "auc": 0.5921462929420589
       },
       {
         "name": "RandomForest",
-        "probability": 0.5987195958130793,
-        "auc": 0.5926537264936029
+        "probability": 0.5989697431752955,
+        "auc": 0.5924233113576559
       }
     ],
-    "auc": 0.5924000097178309,
+    "auc": 0.5922848021498575,
     "confidence": "偏低",
     "note": "多模型只作為輔助，不單獨決定交易"
   },
