@@ -1,0 +1,4 @@
+asset_code,data_asof,horizon_days,sample_count,win_count,win_rate_pct,average_return_pct,median_return_pct,expected_return_after_cost_pct,average_mae_pct,worst_mae_pct,average_mfe_pct,return_ci95_low_pct,return_ci95_high_pct
+00981A,2026-07-31,3,60,37,61.7,1.6,1.66,1.4,-2.01,-13.99,3.89,0.53,2.72
+00981A,2026-07-31,5,60,43,71.7,2.63,2.91,2.43,-2.79,-13.99,5.34,1.3,3.9
+00981A,2026-07-31,10,60,42,70.0,3.0,3.79,2.8,-4.26,-21.03,7.53,0.88,5.26
