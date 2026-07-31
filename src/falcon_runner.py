@@ -46,6 +46,14 @@ def run_falcon_close() -> dict[str, Any]:
             "action": legacy[asset].get("action"),
             "position_pct": legacy[asset].get("suggested_position_pct"),
         }
+        research_path = Path("reports/research") / f"{asset}_research.json"
+        if research_path.exists():
+            try:
+                evidence = json.loads(research_path.read_text(encoding="utf-8"))
+                if evidence.get("data_asof") <= str(pd.Timestamp(df.index[-1]).date()):
+                    report["research_evidence"] = evidence
+            except Exception as exc:
+                print(f"⚠️ {asset} Research報告讀取失敗，收盤流程繼續：{exc}")
         out = Path(spec["reports_dir"]) / "falcon_decision.json"
         save_report(report, out)
         output[asset] = report

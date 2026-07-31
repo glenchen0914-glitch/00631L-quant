@@ -85,6 +85,14 @@ def run_falcon_morning() -> dict[str, Any]:
             "gap_status": "待09:00取得實際開盤價後判定",
         })
         report["reference_close"] = float(df["close"].iloc[-1])
+        research_path = Path("reports/research") / f"{asset}_research.json"
+        if research_path.exists():
+            try:
+                evidence = json.loads(research_path.read_text(encoding="utf-8"))
+                if evidence.get("data_asof") <= str(pd.Timestamp(df.index[-1]).date()):
+                    report["research_evidence"] = evidence
+            except Exception as exc:
+                print(f"⚠️ {asset} Research報告讀取失敗，盤前流程繼續：{exc}")
         report["line_message"] = build_falcon_message(report, session="premarket")
         output[asset] = report
 

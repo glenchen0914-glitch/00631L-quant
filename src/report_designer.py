@@ -148,11 +148,25 @@ def build_falcon_message(report: dict[str, Any], *, session: str) -> str:
         lines += ["", "【支持理由】"] + [f"• {x}" for x in positives]
     if negatives:
         lines += ["", "【尚未確認】"] + [f"• {x}" for x in negatives]
+    research = report.get("research_evidence") or {}
+    h5 = research.get("horizons", {}).get("5", {})
+    validation = research.get("validation_5d", {})
+    if research and h5.get("sample_count", 0) >= 30:
+        lines += [
+            "",
+            "【Research歷史證據】",
+            f"相似樣本：{h5.get('sample_count')}次｜5日勝率：{h5.get('win_rate_pct')}%",
+            f"平均5日報酬：{h5.get('average_return_pct')}%｜扣估計成本後：{h5.get('expected_return_after_cost_pct')}%",
+            f"樣本外方向正確率：{validation.get('directional_accuracy_pct')}%（{validation.get('oos_cases')}例）",
+            f"研究信心：{research.get('confidence', '審慎')}；歷史相似不代表未來保證。",
+        ]
     lines += [
         "",
         "【AI一句話】",
         _summary(report, session),
         "",
-        "信心說明：目前為規則模型信心，尚未加入Research Engine樣本外勝率，故不顯示虛構歷史勝率。",
+        ("信心說明：已加入Research Engine歷史相似樣本與樣本外驗證；仍須服從Gate與風控。"
+         if research else
+         "信心說明：目前為規則模型信心；Research Engine尚無可用報告，故不顯示虛構歷史勝率。"),
     ]
     return "\n".join(lines)

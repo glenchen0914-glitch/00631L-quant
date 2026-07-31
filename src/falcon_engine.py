@@ -247,7 +247,7 @@ def evaluate(
         f"階梯式配置至{target}%"
     )
     return {
-        "engine_version": "Falcon v1.1 Report Designer",
+        "engine_version": "Falcon v2.0.0 Research Foundation",
         "generated_for": str(date.today()),
         "gate": asdict(gate),
         "scores": asdict(scores),

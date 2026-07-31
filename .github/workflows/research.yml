@@ -1,0 +1,63 @@
+name: Falcon Research Engine
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 台灣時間每週六 08:00 = UTC 00:00
+    - cron: '0 0 * * 6'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: falcon-research
+  cancel-in-progress: false
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m compileall -q src tests run_falcon_research.py
+
+      - name: Research offline tests
+        run: python -m pytest -q tests/test_research_engine.py
+
+      - name: Run Falcon Research
+        run: python run_falcon_research.py
+
+      - name: Validate research outputs
+        run: |
+          test -s reports/research/00631L_research.json
+          test -s reports/research/00631L_research.csv
+          test -s reports/research/00981A_research.json
+          test -s reports/research/00981A_research.csv
+          test -s reports/research/research_summary.json
+
+      - name: Upload research artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: falcon-research-${{ github.run_number }}
+          path: reports/research/
+          retention-days: 90
+
+      - name: Commit research reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f reports/research/
+          git commit -m "Update Falcon research evidence" || exit 0
+          git push
