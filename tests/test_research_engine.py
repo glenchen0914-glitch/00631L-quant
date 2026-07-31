@@ -32,7 +32,7 @@ def synthetic_features(rows: int = 520) -> pd.DataFrame:
 
 def test_research_has_honest_evidence_and_oos():
     report = analyze_similar_history(synthetic_features(), asset_code="00631L", neighbors=50)
-    assert report["research_version"] == "Falcon Research v2.0.0"
+    assert report["research_version"] == "Falcon Research v2.0.1"
     assert report["horizons"]["5"]["sample_count"] >= 30
     assert 0 <= report["horizons"]["5"]["win_rate_pct"] <= 100
     assert report["validation_5d"]["oos_cases"] > 0

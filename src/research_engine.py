@@ -231,7 +231,7 @@ def analyze_similar_history(
             })
 
     return {
-        "research_version": "Falcon Research v2.0.0",
+        "research_version": "Falcon Research v2.0.1",
         "asset_code": asset_code,
         "data_asof": str(pd.Timestamp(df.index[-1]).date()),
         "method": "robust-scaled nearest historical states + expanding walk-forward validation",

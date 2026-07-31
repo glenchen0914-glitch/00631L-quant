@@ -105,7 +105,10 @@ def build_features(data: dict[str, pd.DataFrame]) -> pd.DataFrame:
         df = df.join(y[[f"{name}_above_ma20",f"{name}_ret1"]], how="left")
     cols = [c for c in df.columns if "_above_ma20" in c or "_ret1" in c]
     df[cols] = df[cols].ffill()
-    return df.dropna(subset=["ma240","week_k","rsi14"]).copy()
+    # 保留新上市標的的可研究歷史。ma240 只作為可選長期欄位，
+    # 不應成為整張特徵表的硬性裁切條件；否則上市未滿約一年半的
+    # 標的（例如 00981A）只會剩下數十筆，Research Engine 無法運作。
+    return df.dropna(subset=["ma20", "week_k", "rsi14", "atr14"]).copy()
 
 
 def add_ml_features(df: pd.DataFrame) -> pd.DataFrame:
