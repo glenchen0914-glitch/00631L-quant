@@ -1,0 +1,30 @@
+{
+  "asset_code": "00631L",
+  "data_date": "2026-07-30",
+  "generated_at": "2026-07-31T13:16+08:00",
+  "close_action": "不進場，維持0%",
+  "premarket_action": "接近觀察區，等待拉回與量價確認，不預掛追價單",
+  "suggested_position_pct": 0,
+  "premarket_score": 56,
+  "open_bias": "偏多開出機率較高",
+  "reference_close": 28.3799991607666,
+  "entry_plan": {
+    "first": 27.702246677431297,
+    "second": 26.637207060761536,
+    "third": 25.572167444091775,
+    "stop": 24.89441496075647,
+    "first_note": "僅觀察，尚未觸發買進",
+    "resistance": 30.910000228881835,
+    "min_gap": 0.9682178333361466
+  },
+  "close_confidence": {
+    "score": 36,
+    "grade": "D"
+  },
+  "market_score": 100,
+  "market_label": "偏多",
+  "warnings": [
+    "盤前報告使用前一交易日收盤與隔夜市場資料，不能取代開盤後量價確認",
+    "GitHub公開資料源未納入正式台指期夜盤，期貨方向以美股期貨作為替代參考"
+  ]
+}
