@@ -1,0 +1,36 @@
+timezone: Asia/Taipei
+database_path: data/falcon.db
+line_enabled: true
+tickers:
+  TAIEX: "^TWII"
+  NASDAQ: "^IXIC"
+  SOX: "^SOX"
+  SP500: "^GSPC"
+  VIX: "^VIX"
+  TSMC: "2330.TW"
+  ETF_00631L: "00631L.TW"
+  ETF_00981A: "00981A.TW"
+strategy:
+  pilot_threshold: 70
+  add_threshold: 85
+  exit_watch_threshold: 55
+  exit_reduce_threshold: 70
+  exit_full_threshold: 85
+  pilot_position_pct: 20
+  add_position_pct: 50
+  stale_market_days: 5
+weights:
+  market:
+    taiex_trend: 30
+    nasdaq_trend: 15
+    sox_trend: 20
+    tsmc_trend: 25
+    volatility: 10
+  entry:
+    market_ok: 20
+    support_zone: 20
+    kd_confirmation: 15
+    macd_confirmation: 15
+    moving_average_confirmation: 15
+    volume_confirmation: 10
+    risk_ok: 5
