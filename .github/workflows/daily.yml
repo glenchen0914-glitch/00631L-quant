@@ -48,7 +48,7 @@ jobs:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
           LINE_PUSH_REQUIRED: 'false'
-        run: python run_dual.py
+        run: python run_falcon_close.py
 
       - name: Validate outputs
         run: |

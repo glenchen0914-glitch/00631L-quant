@@ -42,7 +42,7 @@ jobs:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
           LINE_PUSH_REQUIRED: 'true'
-        run: python run_morning.py
+        run: python run_falcon_morning.py
 
       - name: Validate morning outputs
         run: |
