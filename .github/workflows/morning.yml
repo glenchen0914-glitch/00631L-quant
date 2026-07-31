@@ -32,10 +32,17 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Syntax check
-        run: python -m compileall -q src run_morning.py
+        run: python -m compileall -q src run_falcon_morning.py falcon_doctor.py
 
       - name: Morning offline tests
         run: python tests/test_morning.py
+
+      - name: Falcon Doctor
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+          LINE_PUSH_REQUIRED: 'true'
+        run: python falcon_doctor.py
 
       - name: Run 07AM premarket
         env:

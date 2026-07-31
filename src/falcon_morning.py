@@ -9,6 +9,7 @@ import pandas as pd
 
 from src.assets import ASSETS
 from src.falcon_engine import evaluate, save_report
+from src.falcon_data import ensure_features
 from src.morning import collect_overnight, score_market
 
 
@@ -64,10 +65,8 @@ def run_falcon_morning() -> dict[str, Any]:
     output: dict[str, Any] = {}
 
     for asset, spec in ASSETS.items():
-        fpath = Path(spec["features_path"])
-        if not fpath.exists():
-            raise FileNotFoundError(f"缺少收盤特徵檔：{fpath}，請先執行14:35流程")
-        df = pd.read_parquet(fpath)
+        # 盤前流程完全獨立：缺少、損壞或不完整時自行下載並重建。
+        df = ensure_features(asset)
         report = evaluate(
             df,
             events=_events(),
@@ -84,11 +83,23 @@ def run_falcon_morning() -> dict[str, Any]:
             "overnight_raw": raw,
             "gap_status": "待09:00取得實際開盤價後判定",
         })
-        path = Path(spec["reports_dir"]) / "falcon_morning.json"
-        save_report(report, path)
         report["line_message"] = build_line_message(asset, report)
         output[asset] = report
 
+        # 統一寫入 morning 目錄，與 GitHub Actions 驗收路徑一致。
+        save_report(report, Path("reports/morning") / f"{asset}_morning.json")
+        # 保留舊路徑相容性，避免既有工具中斷。
+        save_report(report, Path(spec["reports_dir"]) / "falcon_morning.json")
+
+    morning_dir = Path("reports/morning")
+    morning_dir.mkdir(parents=True, exist_ok=True)
+    (morning_dir / "morning_summary.json").write_text(
+        json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (morning_dir / "line_messages.json").write_text(
+        json.dumps([r["line_message"] for r in output.values()], ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     Path("reports/falcon_morning_summary.json").write_text(
         json.dumps(output, ensure_ascii=False, indent=2), encoding="utf-8"
     )
