@@ -1,82 +1,82 @@
 {
   "version": "V17 Dual Short-Term Final",
-  "data_date": "2026-07-30",
+  "data_date": "2026-07-31",
   "strategy": "S05910",
   "stage": "觀察",
   "action": "不進場，維持0%",
   "suggested_position_pct": 0,
-  "bottom_progress_pct": 30,
+  "bottom_progress_pct": 43,
   "bottom_breakdown": {
     "周KD": 10,
-    "RSI": 70,
-    "日KD": 20,
-    "MACD": 20,
+    "RSI": 30,
+    "日KD": 80,
+    "MACD": 80,
     "均線": 20,
     "波動": 70,
     "融資": null,
-    "市場環境": 26
+    "市場環境": 46
   },
   "data_status": {
     "融資": "資料未提供"
   },
-  "reference_close": 28.3799991607666,
+  "reference_close": 33.70000076293945,
   "entry_plan": {
-    "first": 27.702246677431297,
-    "second": 26.637207060761536,
-    "third": 25.572167444091775,
-    "stop": 24.89441496075647,
+    "first": 32.936659108328456,
+    "second": 31.737122222511168,
+    "third": 30.53758533669388,
+    "stop": 27.151903223630256,
     "first_note": "僅觀察，尚未觸發買進",
-    "resistance": 30.910000228881835,
-    "min_gap": 0.9682178333361466
+    "resistance": 34.514999866485596,
+    "min_gap": 1.0904880780157145
   },
-  "support": 27.3700008392334,
-  "support_label": "10日低點",
-  "resistance": 30.910000228881835,
-  "resistance_label": "MA5",
-  "reclaim_level": 28.564593397472173,
-  "reclaim_label": "布林下緣",
-  "week_k": 42.25571462689302,
-  "daily_k": 17.973567096688857,
-  "daily_d": 24.795733528886963,
-  "macd_improving": false,
+  "support": 32.45200023651123,
+  "support_label": "MA10",
+  "resistance": 34.514999866485596,
+  "resistance_label": "MA20",
+  "reclaim_level": 34.514999866485596,
+  "reclaim_label": "MA20",
+  "week_k": 42.80293108786632,
+  "daily_k": 37.01203851033242,
+  "daily_d": 28.86783518936878,
+  "macd_improving": true,
   "above_ma20": false,
   "market_regime": {
-    "score": 26,
-    "label": "偏空",
+    "score": 46,
+    "label": "中性",
     "parts": {
-      "台股趨勢": 2,
-      "NASDAQ": 2,
-      "SOX": 2,
-      "S&P500": 1,
-      "台積電ADR": 2,
+      "台股趨勢": 8,
+      "NASDAQ": 6,
+      "SOX": 8,
+      "S&P500": 4,
+      "台積電ADR": 6,
       "VIX": 10,
-      "美元": 5,
+      "美元": 2,
       "美債殖利率": 2
     },
     "max_score": 100
   },
   "ml_signal": {
-    "probability": 0.5607088838718541,
-    "auc": 0.5916300626285494,
+    "probability": 0.5987195958130793,
+    "auc": 0.5926537264936029,
     "confidence": "偏低",
     "note": "機器學習只作為輔助，不單獨決定交易"
   },
   "model_consensus": {
-    "probability": 0.5444074784387798,
-    "consensus": 0.5,
+    "probability": 0.5966485308735598,
+    "consensus": 1.0,
     "models": [
       {
         "name": "Logistic",
-        "probability": 0.5281060730057053,
-        "auc": 0.5937661370454498
+        "probability": 0.5945774659340404,
+        "auc": 0.5921462929420589
       },
       {
         "name": "RandomForest",
-        "probability": 0.5607088838718541,
-        "auc": 0.5916300626285494
+        "probability": 0.5987195958130793,
+        "auc": 0.5926537264936029
       }
     ],
-    "auc": 0.5926980998369996,
+    "auc": 0.5924000097178309,
     "confidence": "偏低",
     "note": "多模型只作為輔助，不單獨決定交易"
   },
@@ -131,45 +131,45 @@
         "name": "etf",
         "symbol": "00631L.TW",
         "status": "正常",
-        "latest_date": "2026-07-30",
+        "latest_date": "2026-07-31",
         "delay_days": 0,
-        "rows": 2863,
+        "rows": 2864,
         "missing_close": 0
       },
       {
         "name": "twii",
         "symbol": "^TWII",
         "status": "正常",
-        "latest_date": "2026-07-30",
+        "latest_date": "2026-07-31",
         "delay_days": 0,
-        "rows": 2854,
+        "rows": 2855,
         "missing_close": 0
       },
       {
         "name": "nasdaq",
         "symbol": "^IXIC",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 2951,
+        "rows": 2952,
         "missing_close": 0
       },
       {
         "name": "sox",
         "symbol": "^SOX",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 2951,
+        "rows": 2952,
         "missing_close": 0
       },
       {
         "name": "sp500",
         "symbol": "^GSPC",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 2951,
+        "rows": 2952,
         "missing_close": 0
       },
       {
@@ -177,7 +177,7 @@
         "symbol": "^VIX",
         "status": "正常",
         "latest_date": "2026-07-30",
-        "delay_days": 0,
+        "delay_days": 1,
         "rows": 2953,
         "missing_close": 0
       },
@@ -185,27 +185,27 @@
         "name": "dxy",
         "symbol": "DX-Y.NYB",
         "status": "正常",
-        "latest_date": "2026-07-30",
+        "latest_date": "2026-07-31",
         "delay_days": 0,
-        "rows": 2953,
+        "rows": 2954,
         "missing_close": 0
       },
       {
         "name": "us10y",
         "symbol": "^TNX",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 2950,
+        "rows": 2951,
         "missing_close": 0
       },
       {
         "name": "tsm_adr",
         "symbol": "TSM",
         "status": "正常",
-        "latest_date": "2026-07-29",
+        "latest_date": "2026-07-30",
         "delay_days": 1,
-        "rows": 2951,
+        "rows": 2952,
         "missing_close": 0
       }
     ]
@@ -219,26 +219,27 @@
     "cagr": 0.2538050405183807
   },
   "decision_explanation": {
-    "positive": [],
+    "positive": [
+      "模型共識略偏多"
+    ],
     "negative": [
       "落底進度仍不足",
-      "市場環境為偏空",
-      "Top 5策略尚未形成多數",
-      "模型共識未達偏多門檻"
+      "市場環境為中性",
+      "Top 5策略尚未形成多數"
     ],
     "missing": [
       "融資資料未提供"
     ]
   },
   "confidence_grade": {
-    "score": 36,
+    "score": 48,
     "grade": "D"
   },
   "asset_code": "00631L",
   "asset_name": "元大台灣50正2",
   "analysis_type": "短線操作",
   "progress_label": "落底進度",
-  "history_rows": 2624,
+  "history_rows": 2625,
   "history_status": "充足",
   "fallback_strategy": false
 }
