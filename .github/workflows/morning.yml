@@ -1,0 +1,75 @@
+name: 00631L + 00981A 07AM Premarket
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 台灣時間週一至週五 07:00 = UTC前一日23:00，因此使用週日至週四
+    - cron: '0 23 * * 0-4'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: 00631l-00981a-morning
+  cancel-in-progress: false
+
+jobs:
+  morning:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install
+        run: pip install -r requirements.txt
+
+      - name: Syntax check
+        run: python -m compileall -q src run_morning.py
+
+      - name: Morning offline tests
+        run: python tests/test_morning.py
+
+      - name: Run 07AM premarket
+        env:
+          LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+          LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+          LINE_PUSH_REQUIRED: 'true'
+        run: python run_morning.py
+
+      - name: Validate morning outputs
+        run: |
+          test -s reports/morning/morning_summary.json
+          test -s reports/morning/00631L_morning.json
+          test -s reports/morning/00981A_morning.json
+          test -s reports/morning/line_messages.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for p in Path("reports/morning").glob("*.json"):
+              json.loads(p.read_text(encoding="utf-8"))
+          print("✅ 盤前輸出驗證完成")
+          PY
+
+      - name: Upload morning artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: morning-report-${{ github.run_number }}
+          path: reports/morning/
+          retention-days: 30
+
+      - name: Commit morning reports
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f reports/morning/
+          git commit -m "07AM premarket report" || exit 0
+          git pull --rebase origin main
+          git push
